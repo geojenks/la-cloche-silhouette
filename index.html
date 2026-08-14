@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>La Cloche Silhouette Trail — Six Days in Killarney</title>
+<link rel="stylesheet" href="lib/leaflet.css">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app">
+  <header id="topbar">
+    <h1>La Cloche Silhouette Trail</h1>
+    <span class="sub">78 km · 6 days · Killarney, Ontario · August 2026</span>
+    <div class="spacer"></div>
+    <a class="btn" href="notes.html" title="Every voice note from the trail, uncut">🎙<span class="lbl"> Voice notes</span></a>
+    <button id="modeToggle" class="btn" title="Switch between story mode and trip-planning detail">🥾<span class="lbl"> Technical mode</span></button>
+  </header>
+
+  <div id="map"></div>
+
+  <div id="modeNote" class="hidden">
+    <button id="noteClose">✕</button>
+    <b>Two ways to read this trip.</b> You're in <b>story mode</b> — photos, videos and moments.
+    <b>Technical mode</b> adds planning detail (distances into the day, elevations, navigation and water notes).
+    It's only really useful if you're planning to do the walk yourself — otherwise, honestly, quite boring.
+  </div>
+
+  <div id="timeline">
+    <div id="dayLabel">Day 1 · Sat 8 Aug</div>
+    <canvas id="tlCanvas"></canvas>
+  </div>
+
+  <div id="lightbox" class="hidden">
+    <button id="lbClose">✕</button>
+    <button id="lbPrev" class="lbNav">‹</button>
+    <button id="lbNext" class="lbNav">›</button>
+    <figure>
+      <img id="lbImg" alt="">
+      <video id="lbVid" class="hidden" controls playsinline preload="none"></video>
+      <figcaption id="lbCap"></figcaption>
+    </figure>
+  </div>
+
+  <footer id="credit">
+    Base map © <a href="https://digital.mapsbyjeff.com/" target="_blank" rel="noopener">Maps by Jeff</a> — buy his La Cloche map at the Outfitters near base camp. It's essential.
+  </footer>
+</div>
+<script src="lib/leaflet.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
