@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>La Cloche Silhouette Trail — Six Days in Killarney</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='80' font-size='85'>⛺</text></svg>">
 <link rel="stylesheet" href="lib/leaflet.css">
 <link rel="stylesheet" href="css/style.css">
 </head>
@@ -29,6 +30,8 @@
     narrative and the language is a hybrid of my voice and Claude's. It may be a little weird in places.
   </div>
 
+  <div id="strip"></div>
+
   <div id="timeline">
     <div id="dayLabel">Day 1 · Sat 8 Aug</div>
     <canvas id="tlCanvas"></canvas>
@@ -41,6 +44,12 @@
     <figure>
       <img id="lbImg" alt="">
       <video id="lbVid" class="hidden" controls playsinline preload="none"></video>
+      <div id="lbClipBig" class="hidden">
+        <div class="mic">🎙</div>
+        <h3 id="lbClipTitle"></h3>
+        <p id="lbClipWhy"></p>
+        <audio id="lbAud" controls></audio>
+      </div>
       <figcaption id="lbCap"></figcaption>
     </figure>
   </div>

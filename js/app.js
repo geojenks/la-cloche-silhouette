@@ -82,33 +82,61 @@
   const lbImg = document.getElementById("lbImg");
   const lbVid = document.getElementById("lbVid");
   const lbCap = document.getElementById("lbCap");
+  const lbClipBig = document.getElementById("lbClipBig");
+  const lbAud = document.getElementById("lbAud");
+  const esc = (t) => t.replace(/[<>&]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" }[c]));
 
-  // gallery: every media item in trail order, browsable with arrows / swipe
-  const gallery = [...data.media].sort((a, b) => a.dist - b.dist);
-  const galleryIdx = Object.fromEntries(gallery.map((m, i) => [m.file, i]));
+  // gallery: EVERY item — photos, videos and voice notes — in trail order.
+  // `view` is the currently visible subset (technical clips hidden in story
+  // mode); the strip and the lightbox arrows both walk `view`.
+  const gallery = [
+    ...data.media.map((m) => ({ kind: m.type === "video" ? "video" : "photo", m })),
+    ...clips.map((c) => ({ kind: "clip", c, dist: c.dist })),
+  ].map((it) => (it.kind === "clip" ? it : { ...it, dist: it.m.dist }))
+    .sort((a, b) => a.dist - b.dist);
+  let view = [], viewIdx = {};
+
   let lbCur = -1;
   function showLightbox(i) {
-    lbCur = (i + gallery.length) % gallery.length;
-    const m = gallery[lbCur];
-    lbVid.pause();
-    if (m.type === "video") {
-      lbImg.classList.add("hidden");
+    lbCur = (i + view.length) % view.length;
+    const it = view[lbCur];
+    lbVid.pause(); lbAud.pause();
+    lbImg.classList.add("hidden");
+    lbVid.classList.add("hidden"); lbVid.removeAttribute("src");
+    lbClipBig.classList.add("hidden"); lbAud.removeAttribute("src");
+    let cap = "";
+    if (it.kind === "clip") {
+      const c = it.c;
+      const warn = c.flag === "gross" ? '<div class="clip-warn">🤢 fair warning: a touch gross</div>' : "";
+      if (c.video) {
+        lbVid.classList.remove("hidden");
+        lbVid.poster = "media/poster/clip_" + c.id + ".jpg";
+        lbVid.src = c.media;
+        cap = `<div class="lbNote">🎙 ${esc(c.title)} — ${esc(c.why)}</div>` + warn;
+      } else {
+        lbClipBig.classList.remove("hidden");
+        document.getElementById("lbClipTitle").textContent = c.title;
+        document.getElementById("lbClipWhy").textContent = c.why;
+        lbAud.src = c.media;
+        cap = warn;
+      }
+    } else if (it.kind === "video") {
+      const m = it.m;
       lbVid.classList.remove("hidden");
       lbVid.poster = "media/poster/" + m.file.replace(".mp4", ".jpg");
       lbVid.src = "media/video/" + m.file;
+      cap = (m.note ? `<div class="lbNote">📝 ${esc(m.note)}</div>` : "") + fmtTime(m.time);
     } else {
-      lbVid.classList.add("hidden");
-      lbVid.removeAttribute("src");
+      const m = it.m;
       lbImg.classList.remove("hidden");
       lbImg.src = "media/web/" + m.file;
+      cap = (m.note ? `<div class="lbNote">📝 ${esc(m.note)}</div>` : "") + fmtTime(m.time);
     }
-    const esc = (t) => t.replace(/[<>&]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" }[c]));
-    lbCap.innerHTML = (m.note ? `<div class="lbNote">📝 ${esc(m.note)}</div>` : "") +
-      `${fmtTime(m.time)} · ${lbCur + 1}/${gallery.length}`;
+    lbCap.innerHTML = cap + `${cap && !cap.endsWith(">") ? " · " : ""}${lbCur + 1}/${view.length}`;
     lb.classList.remove("hidden");
-    setDist(m.dist, "lightbox");
+    setDist(it.dist, "lightbox");
   }
-  const closeLb = () => { lb.classList.add("hidden"); lbVid.pause(); };
+  const closeLb = () => { lb.classList.add("hidden"); lbVid.pause(); lbAud.pause(); };
   document.getElementById("lbClose").onclick = closeLb;
   document.getElementById("lbPrev").onclick = () => showLightbox(lbCur - 1);
   document.getElementById("lbNext").onclick = () => showLightbox(lbCur + 1);
@@ -150,7 +178,7 @@
   }
   map.on("popupopen", (e) => {
     const img = e.popup.getElement().querySelector(".popup-thumb");
-    if (img) img.onclick = () => showLightbox(galleryIdx[img.dataset.file]);
+    if (img) img.onclick = () => showLightbox(viewIdx[img.dataset.file]);
   });
   map.on("popupclose", (e) => {
     const av = e.popup.getElement() && e.popup.getElement().querySelector("audio, video");
@@ -189,6 +217,57 @@
         c.mk.addTo(map);
       } else if (!show && map.hasLayer(c.mk)) map.removeLayer(c.mk);
     }
+  }
+
+  // ---------- media strip (all media + voice notes, in trail order) ----------
+  const strip = document.getElementById("strip");
+  let stripCur = -1, stripUserTs = 0;
+  for (const ev of ["pointerdown", "touchstart", "wheel"])
+    strip.addEventListener(ev, () => { stripUserTs = Date.now(); }, { passive: true });
+
+  function rebuildView() {
+    view = gallery.filter((it) => it.kind !== "clip" || tech || it.c.tag !== "technical");
+    viewIdx = {};
+    view.forEach((it, i) => { viewIdx[it.kind === "clip" ? "clip:" + it.c.id : it.m.file] = i; });
+    strip.innerHTML = "";
+    stripCur = -1;
+    view.forEach((it, i) => {
+      const el = document.createElement("div");
+      if (it.kind === "clip") {
+        el.className = "strip-it strip-clip";
+        el.style.setProperty("--dc", dayOf(it.dist).color);
+        el.textContent = it.c.video ? "🎬" : "🔊";
+        el.title = it.c.title;
+      } else {
+        el.className = "strip-it" + (it.kind === "video" ? " vid" : "");
+        const img = document.createElement("img");
+        img.loading = "lazy";
+        img.alt = "";
+        img.src = it.kind === "video"
+          ? "media/poster/" + it.m.file.replace(".mp4", ".jpg")
+          : "media/thumb/" + it.m.file;
+        el.appendChild(img);
+      }
+      el.onclick = () => showLightbox(i);
+      strip.appendChild(el);
+    });
+  }
+
+  function updateStripCur() {
+    if (!view.length) return;
+    let best = 0, bd = Infinity;
+    for (let i = 0; i < view.length; i++) {
+      const d = Math.abs(view[i].dist - cur);
+      if (d < bd) { bd = d; best = i; }
+    }
+    if (best === stripCur) return;
+    if (stripCur >= 0) strip.children[stripCur].classList.remove("cur");
+    stripCur = best;
+    const el = strip.children[best];
+    el.classList.add("cur");
+    // don't fight the user while they're browsing the strip themselves
+    if (Date.now() - stripUserTs > 1600)
+      el.scrollIntoView({ inline: "center", block: "nearest", behavior: "smooth" });
   }
 
   // ---------- scrub state ----------
@@ -239,6 +318,7 @@
     if (tech) txt += ` · ${((cur - d.start) / 1000).toFixed(1)} km into the day · ${(total / 1000).toFixed(1)} km total`;
     dayLabel.textContent = txt;
     drawTimeline();
+    updateStripCur();
   }
 
   // ---------- timeline canvas (elevation profile + scrubber) ----------
@@ -320,6 +400,7 @@
     this.classList.toggle("active");
     this.innerHTML = tech ? '✨<span class="lbl"> Story mode</span>' : '🥾<span class="lbl"> Technical mode</span>';
     updateClips();
+    rebuildView();
     setDist(cur, "toggle");
   };
 
@@ -333,5 +414,6 @@
 
   window.addEventListener("resize", drawTimeline);
   updateClips();
+  rebuildView();
   setDist(0, "init");
 })();

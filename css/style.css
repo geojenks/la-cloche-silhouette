@@ -5,6 +5,7 @@
   --muted: #9fb0cc;
   --accent: #ffd24a;
   --tl-h: 118px;
+  --strip-h: 72px;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html, body, #app { height: 100%; }
@@ -36,6 +37,40 @@ a.btn { text-decoration: none; color: var(--text); }
 
 #map { flex: 1; background: #0e1e3c; }
 
+#strip {
+  display: flex; align-items: center; gap: 6px;
+  height: var(--strip-h); padding: 6px 8px;
+  background: var(--panel); border-top: 1px solid #2a4680;
+  overflow-x: auto; overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin; scrollbar-color: #3a5da8 transparent;
+}
+.strip-it {
+  flex: 0 0 auto; height: 56px; border-radius: 6px;
+  border: 2px solid transparent; cursor: pointer;
+  position: relative; overflow: hidden; background: #0e1e3c;
+}
+.strip-it img { height: 100%; width: auto; display: block; }
+.strip-it.cur { border-color: var(--accent); }
+.strip-it.vid::after {
+  content: "▶"; position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; font-size: 15px; text-shadow: 0 1px 4px rgba(0,0,0,0.8);
+  background: rgba(0,0,0,0.18);
+}
+.strip-clip {
+  width: 56px; display: flex; align-items: center; justify-content: center;
+  font-size: 22px; border: 2px solid var(--dc, var(--accent));
+}
+.strip-clip.cur { border-color: var(--accent); box-shadow: 0 0 0 1.5px var(--accent); }
+
+#lbClipBig { color: var(--text); max-width: min(560px, 88vw); margin: 0 auto; }
+#lbClipBig .mic { font-size: 56px; margin-bottom: 8px; }
+#lbClipBig h3 { font-size: 1.1rem; margin-bottom: 6px; }
+#lbClipBig p { color: var(--muted); font-size: 0.86rem; line-height: 1.45; margin-bottom: 14px; }
+#lbClipBig audio { width: min(420px, 84vw); }
+#lbClipBig.hidden { display: none; }
+
 #timeline {
   height: var(--tl-h);
   background: var(--panel);
@@ -47,7 +82,7 @@ a.btn { text-decoration: none; color: var(--text); }
 #tlCanvas { width: 100%; height: calc(100% - 18px); display: block; cursor: pointer; touch-action: none; }
 
 #credit {
-  position: absolute; right: 6px; bottom: calc(var(--tl-h) + 6px);
+  position: absolute; right: 6px; bottom: calc(var(--tl-h) + var(--strip-h) + 6px);
   z-index: 900;
   font-size: 0.68rem; color: #223;
   background: rgba(255,255,255,0.85);
@@ -140,6 +175,9 @@ a.btn { text-decoration: none; color: var(--text); }
   #topbar .sub { display: none; }
   .btn { font-size: 0.8rem; padding: 4px 8px; }
   .btn .lbl { display: none; }
-  :root { --tl-h: 92px; }
+  :root { --tl-h: 92px; --strip-h: 62px; }
+  #strip { padding: 5px 6px; }
+  .strip-it { height: 48px; }
+  .strip-clip { width: 48px; font-size: 19px; }
   .popup-thumb { max-width: 160px; }
 }
