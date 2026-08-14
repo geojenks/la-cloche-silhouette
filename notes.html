@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Voice notes — La Cloche Silhouette Trail</title>
+<style>
+  :root { --bg:#0e1e3c; --panel:#16294e; --text:#eef2f8; --muted:#9fb0cc; --accent:#ffd24a; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { background:var(--bg); color:var(--text); font-family:system-ui,sans-serif; padding:18px; max-width:860px; margin:0 auto; }
+  h1 { font-size:1.2rem; margin-bottom:4px; }
+  h2 { font-size:1rem; margin:28px 0 8px; color:var(--accent); border-bottom:1px solid #2a4680; padding-bottom:4px; }
+  a.back { color:var(--accent); font-size:.85rem; text-decoration:none; }
+  #disclaimer {
+    background:var(--panel); border:1px solid var(--accent); border-radius:10px;
+    padding:12px 14px; margin:14px 0 6px; font-size:.9rem; line-height:1.5;
+  }
+  #disclaimer b { color:var(--accent); }
+  .sub { color:var(--muted); font-size:.85rem; margin:8px 0 4px; }
+  .note { background:var(--panel); border-radius:10px; padding:10px 14px; margin:10px 0; }
+  .note.excluded { opacity:.35; }
+  .head { display:flex; gap:10px; align-items:baseline; flex-wrap:wrap; }
+  .title { font-weight:600; }
+  .dur { color:var(--muted); font-size:.75rem; font-variant-numeric:tabular-nums; }
+  .preview { color:var(--muted); font-size:.8rem; margin-top:4px; }
+  audio { width:100%; margin-top:8px; }
+  .warn { background:#c8285a; color:#fff; font-size:.72rem; border-radius:99px; padding:2px 8px; }
+  .excl { margin-left:auto; font-size:.8rem; display:flex; gap:5px; align-items:center; white-space:nowrap; }
+  .excl input { width:16px; height:16px; accent-color:var(--accent); }
+  #reviewbar { position:sticky; top:0; background:var(--bg); padding:10px 0; display:none; gap:10px; align-items:center; z-index:5; }
+  #reviewbar button { background:var(--accent); color:#223; border:0; border-radius:8px; padding:8px 14px; font-weight:600; cursor:pointer; }
+  #reviewbar span { color:var(--muted); font-size:.85rem; }
+</style>
+</head>
+<body>
+<a class="back" href="index.html">← back to the map</a>
+<h1>The voice notes, uncut</h1>
+<div id="disclaimer">
+  <b>Fair warning:</b> these are the complete, unedited voice notes from the trail —
+  every wrong turn, wildlife rustle and rambling water-filter update. If you're
+  planning to walk the La Cloche Silhouette yourself there may be some useful notes in here.
+  If you're not… they may be <b>quite boring</b>. The highlights are on the map —
+  start there.
+</div>
+<div id="reviewbar"><button id="exportExcl">Export exclusions</button><span id="exclCount"></span>
+  <span>Review mode: tick "don't share" on anything too personal. ⚠ = my flags.</span></div>
+<div id="diary"><h2>Trail diary (notes to self)</h2></div>
+<div id="letters"><h2>Letters from the trail</h2>
+<div class="sub">Voice notes sent to friends whenever a hilltop had signal.</div></div>
+<script>
+const REVIEW = new URLSearchParams(location.search).get("review") === "1";
+// Claude's privacy flags for George's share-check (shown only in review mode)
+const FLAGS = {
+  "Barney__WhatsApp_Ptt_2026-08-10_at_01.30.36": "opens with a microdose mention",
+  "Barney__WhatsApp_Ptt_2026-08-11_at_00.47.05": "mushroom/trip content",
+  "self__Til_death": "personal story about Aaron — feels private",
+  "self__Germanic_Phoneme": "random muttering, harmless but odd out of context",
+  "Catherine__WhatsApp_Ptt_2026-08-11_at_02.26.37": "29 min of personal catch-up chat",
+  "Catherine__WhatsApp_Ptt_2026-08-12_at_21.39.24": "personal plans ('we could do something like this')",
+  "Catherine__WhatsApp_Ptt_2026-08-12_at_21.46.29": "names/discusses third parties (Ellie etc.)",
+  "Catherine__WhatsApp_Ptt_2026-08-13_at_19.19.50": "post-trail travel logistics (Airbnb location)",
+  "Chiara__WhatsApp_Ptt_2026-08-13_at_16.43.09": "post-trail personal chat about a UK friend",
+  "Hesk__WhatsApp_Ptt_2026-08-13_at_11.54.50": "personal catch-up, little trail content",
+  "Larry__WhatsApp_Ptt_2026-08-13_at_12.42.18": "personal catch-up, little trail content",
+  "Larry__WhatsApp_Ptt_2026-08-13_at_15.02.37": "personal (teaching/work) chat",
+};
+const KEY = "killarney_notes_excl";
+const excl = new Set(JSON.parse(localStorage.getItem(KEY) || "[]"));
+const fmt = (s) => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, "0")}`;
+const niceTitle = (k) => k.split("__")[1].replace(/WhatsApp_Pt[tv]_/, "").replace(/_at_/, " ")
+  .replace(/_/g, " ").replace(/\./g, ":").replace(/(\d{4})-(\d{2})-(\d{2})/, "$3/$2");
+
+fetch("data/clips_full.json").then(r => r.json()).then(async (full) => {
+  let hidden = [];
+  if (!REVIEW) {
+    try { hidden = await fetch("data/notes_excluded.json").then(r => r.ok ? r.json() : []); }
+    catch (e) {}
+  }
+  const diary = full.filter(f => f.recipient === "self");
+  const letters = full.filter(f => f.recipient !== "self");
+  const update = () => {
+    document.getElementById("exclCount").textContent = `${excl.size} excluded`;
+    localStorage.setItem(KEY, JSON.stringify([...excl]));
+  };
+  const render = (f, host) => {
+    if (!REVIEW && hidden.includes(f.key)) return;
+    const el = document.createElement("div");
+    el.className = "note" + (excl.has(f.key) ? " excluded" : "");
+    el.innerHTML = `<div class="head"><span class="title">${f.recipient === "self" ? "" : "To " + f.recipient + " · "}${niceTitle(f.key)}</span>
+      <span class="dur">${fmt(f.duration)}</span>
+      ${REVIEW && FLAGS[f.key] ? `<span class="warn">⚠ ${FLAGS[f.key]}</span>` : ""}
+      ${REVIEW ? `<label class="excl"><input type="checkbox" ${excl.has(f.key) ? "checked" : ""}> don't share</label>` : ""}
+      </div>
+      <div class="preview">${f.preview}…</div>
+      <audio controls preload="none" src="${f.media}"></audio>`;
+    if (REVIEW) el.querySelector(".excl input").onchange = (e) => {
+      e.target.checked ? excl.add(f.key) : excl.delete(f.key);
+      el.classList.toggle("excluded", e.target.checked);
+      update();
+    };
+    host.appendChild(el);
+  };
+  for (const f of diary) render(f, document.getElementById("diary"));
+  for (const f of letters) render(f, document.getElementById("letters"));
+  for (const id of ["diary", "letters"]) {
+    const host = document.getElementById(id);
+    if (!host.querySelector(".note")) host.style.display = "none";
+  }
+  if (REVIEW) {
+    document.getElementById("reviewbar").style.display = "flex";
+    update();
+    document.getElementById("exportExcl").onclick = () => {
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(new Blob([JSON.stringify([...excl], null, 1)], { type: "application/json" }));
+      a.download = "notes_excluded.json"; a.click();
+    };
+  }
+});
+</script>
+</body>
+</html>
