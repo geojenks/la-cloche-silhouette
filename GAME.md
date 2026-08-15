@@ -61,9 +61,14 @@ topbar). Decisions locked in with George:
   `media/audio_game/`, run `python3 tools/beatgrid.py media/audio_game/*.mp3`
   to draft each song's JSON (BPM/offset detection is solid; hand-tune
   `sections` + `offset` by ear), then list song ids in the level's
-  `playlist`. A missing mp3 falls back to a synth loop on the same beat
-  grid. `trailhead-test.mp3` is an original generated chiptune placeholder
-  (see `tools/make_test_track.py`).
+  `playlist` and remove the JSON's `"generated"` flag if present. The
+  placeholder track (`trailhead-test`) is an original chiptune synthesized
+  in the browser at load (`game/js/gen-track.js`, mirrored by
+  `tools/make_test_track.py` for offline mp3 rendering); a listed mp3 that
+  fails to load falls back to the same generated audio. NOTE: cloud Claude
+  sessions can only push text through the GitHub API, so mp3s must be
+  committed/pushed from George's machine (individually — see push note
+  below).
 - **Stamina is the only resource** — no deaths. Zero stamina = slow trudge.
   Snacks +25, swimming refills fast, standing still trickles. The 🔄 button
   (or R) resets to the last checkpoint with full stamina.

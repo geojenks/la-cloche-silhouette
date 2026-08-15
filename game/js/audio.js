@@ -12,6 +12,7 @@ class MusicManager {
   constructor() {
     this.ctx = null;
     this.songs = {};        // id -> song JSON
+    this.buffers = {};      // id -> Float32Array for generated tracks
     this.playlist = [];     // ids, [0] is the level default
     this.queue = [];        // play order actually used
     this.qi = 0;
@@ -30,6 +31,10 @@ class MusicManager {
       if (!this.songs[id]) {
         const r = await fetch(`data/songs/${id}.json`);
         this.songs[id] = await r.json();
+        this.songs[id].id = id;
+        // synthesize generated tracks up front (a second or so of CPU)
+        if (this.songs[id].generated && typeof generateTrack === "function" && !this.buffers[id])
+          this.buffers[id] = generateTrack(id);
       }
     }
   }
@@ -73,29 +78,49 @@ class MusicManager {
   _stopCurrent() {
     if (this.el) { this.el.pause(); this.el.src = ""; this.el = null; }
     if (this.srcNode) { try { this.srcNode.disconnect(); } catch (e) {} this.srcNode = null; }
+    if (this.bufSrc) { this.bufSrc.onended = null; try { this.bufSrc.stop(); } catch (e) {} this.bufSrc = null; }
     if (this.fallback) { this.fallback.stop(); this.fallback = null; }
+  }
+
+  _playBuffer(song, samples) {
+    const buf = this.ctx.createBuffer(1, samples.length, 44100);
+    buf.getChannelData(0).set(samples);
+    const src = this.ctx.createBufferSource();
+    src.buffer = buf;
+    src.connect(this.bass);
+    src.onended = () => { if (this.bufSrc === src) this.next(); };
+    this.bufSrc = src;
+    this.startCtxTime = this.ctx.currentTime;
+    src.start();
+    this.playing = true;
+    if (this.onSongChange) this.onSongChange(song, true);
   }
 
   _playCurrent() {
     this._stopCurrent();
     const song = this.song;
     this.lastBeat = -1;
+    const gen = this.buffers[song.id] ||
+      (typeof generateTrack === "function" ? (this.buffers[song.id] = generateTrack(song.id)) : null);
+    if (song.generated && gen) return this._playBuffer(song, gen);
     const el = new Audio("../" + song.file);
     el.crossOrigin = "anonymous";
     el.preload = "auto";
     this.el = el;
     el.addEventListener("ended", () => this.next());
     el.addEventListener("error", () => {
-      // mp3 missing (e.g. purchased tracks not dropped in yet) — synth loop
-      // on the same beat grid so gameplay is identical.
-      if (this.el === el) {
-        this.el = null;
-        this.fallback = new FallbackSynth(this.ctx, this.bass, song);
-        this.startCtxTime = this.ctx.currentTime;
-        this.fallback.start();
-        this.playing = true;
-        if (this.onSongChange) this.onSongChange(song, true);
-      }
+      // mp3 missing (e.g. purchased tracks not dropped in yet) — fall back
+      // to a generated tune, or a bare synth loop, on the same beat grid
+      // so gameplay is identical.
+      if (this.el !== el) return;
+      this.el = null;
+      const genFb = this.buffers[song.id];
+      if (genFb) return this._playBuffer(song, genFb);
+      this.fallback = new FallbackSynth(this.ctx, this.bass, song);
+      this.startCtxTime = this.ctx.currentTime;
+      this.fallback.start();
+      this.playing = true;
+      if (this.onSongChange) this.onSongChange(song, true);
     });
     const onPlay = () => {
       this.startCtxTime = this.ctx.currentTime - el.currentTime;
