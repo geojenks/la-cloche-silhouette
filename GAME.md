@@ -44,6 +44,43 @@ mp3s. **Copyrighted tracks must NOT be embedded in this public repo/site** —
 show a "song of the day" link out instead, and use original chiptune-style
 loops for actual in-game audio.
 
+## Status (2026-08-15)
+
+Bare-bones Day 1 is playable at `game/index.html` (linked from the map
+topbar). Decisions locked in with George:
+
+- **Beat-clocked spawner**, free movement (not an auto-runner). Enemy spawns
+  fire on the beat grid — downbeats spawn birds/snakes, midbeats chipmunks,
+  upbeats frogs (which hop on downbeats); song sections' `intensity` (0-3)
+  sets spawn density. Intensity-0 sections (intros/bridges) are enemy-free
+  breathing room.
+- **Level length = default song length**: acing a level (holding max run
+  speed) takes exactly the duration of the level's default first song.
+  Playlists shuffle after the default song; ⏮⏭ skip anytime.
+- **Songs**: George is buying the mp3s (non-profit use). Drop them in
+  `media/audio_game/`, run `python3 tools/beatgrid.py media/audio_game/*.mp3`
+  to draft each song's JSON (BPM/offset detection is solid; hand-tune
+  `sections` + `offset` by ear), then list song ids in the level's
+  `playlist`. A missing mp3 falls back to a synth loop on the same beat
+  grid. `trailhead-test.mp3` is an original generated chiptune placeholder
+  (see `tools/make_test_track.py`).
+- **Stamina is the only resource** — no deaths. Zero stamina = slow trudge.
+  Snacks +25, swimming refills fast, standing still trickles. The 🔄 button
+  (or R) resets to the last checkpoint with full stamina.
+- **Enemy verbs**: stomp (chipmunks, frogs), bonk-from-below (birds),
+  avoid (snakes — never safe to touch). Landing *on top* of a bird is a
+  deliberately-hard springboard (vy -580 vs normal jump -420) to reach
+  secret vista platforms.
+- **Lake dips are optional** (stepping stones cross above) and set a
+  checkpoint; underwater audio = lowpass + bass-shelf boost via Web Audio.
+- **Nights**: `game/data/levels/dayN.json` has a `night` block — `gif` slot
+  for the pixel-art photo loops (George will make these, e.g. with GPT),
+  `bear: true` on night 4 for the bear-poo cameo.
+
+Still to build: days 2-6 (incl. day-2 matches pickup → better night
+recovery, day-4 Silver Peak hiker crowds), food-hang mini-game, real
+sprite art, night GIFs, per-day biome tuning.
+
 ## Constraints carried over from the site
 
 - Base map is © Maps by Jeff — don't reuse map artwork in the game.
