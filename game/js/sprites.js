@@ -250,13 +250,13 @@ const SNACK = [
   "........",
 ];
 const STAR = [
-  "....m....",
-  "...mmm...",
-  ".mmmmmmm.",
-  "..mmmmm..",
-  "...mmm...",
-  "..mm.mm..",
-  ".m.....m.",
+  "....y....",
+  "...yyy...",
+  ".yyyyyyy.",
+  "..yyyyy..",
+  "...yyy...",
+  "..yy.yy..",
+  ".y.....y.",
   ".........",
 ];
 const TENT = [
@@ -301,6 +301,73 @@ const MATCHBOX = [
 ];
 
 const Sprites = {};
+
+// Boot-time override: if game/img/spritesheet.png exists (produced by
+// tools/normalize_spritesheet.py from a GPT-styled sheet), slice it by the
+// grid manifest and replace the code-drawn placeholders. Returns true when
+// a sheet was loaded; on any failure the placeholders stay.
+async function loadSpriteSheet() {
+  let mf, img;
+  try {
+    mf = await (await fetch("data/spritesheet.json")).json();
+    img = await new Promise((res, rej) => {
+      const i = new Image();
+      i.onload = () => res(i); i.onerror = rej;
+      i.src = "img/spritesheet.png";
+    });
+  } catch (e) { return false; }
+  const artH = mf.cell.h - mf.cell.label;
+  const cut = (s) => {
+    const cx = s.cell[0] * mf.cell.w + Math.floor((mf.cell.w - s.w) / 2);
+    const cy = mf.header + s.cell[1] * mf.cell.h + Math.floor((artH - s.h) / 2);
+    const c = document.createElement("canvas");
+    c.width = s.w; c.height = s.h;
+    const g = c.getContext("2d");
+    g.imageSmoothingEnabled = false;
+    g.drawImage(img, cx, cy, s.w, s.h, 0, 0, s.w, s.h);
+    return c;
+  };
+  const by = {};
+  for (const s of mf.sprites) by[s.name] = cut(s);
+  // frames back into the atlas the game reads
+  Sprites.hiker = [by.hiker_walk_a, by.hiker_walk_b];
+  Sprites.hikerJump = by.hiker_jump;
+  Sprites.hikerTrudge = by.hiker_trudge;
+  Sprites.hikerL = Sprites.hiker.map(flip);
+  Sprites.hikerJumpL = flip(by.hiker_jump);
+  Sprites.hikerTrudgeL = flip(by.hiker_trudge);
+  Sprites.chip = [by.chipmunk_a, by.chipmunk_b];
+  Sprites.chipL = Sprites.chip.map(flip);
+  Sprites.chipSquash = by.chipmunk_squash;
+  Sprites.frog = [by.frog_sit, by.frog_leap];
+  Sprites.snake = [by.snake_a, by.snake_b];
+  Sprites.snakeL = Sprites.snake.map(flip);
+  Sprites.bird = [by.bird_a, by.bird_b];
+  Sprites.birdL = Sprites.bird.map(flip);
+  Sprites.snack = by.snack;
+  Sprites.star = by.star;
+  Sprites.matchbox = by.matchbox;
+  Sprites.sign = by.sign;
+  Sprites.cairn = by.cairn;
+  Sprites.tent = by.tent;
+  // decor + tiles only exist once a sheet provides them; the renderer
+  // checks for these and falls back to procedural drawing otherwise
+  Sprites.treeSmall = by.tree_small;
+  Sprites.treeLarge = by.tree_large;
+  Sprites.boulder = by.boulder;
+  Sprites.reed = by.reed;
+  Sprites.flower = by.flower;
+  Sprites.sun = by.sun;
+  Sprites.cloud = by.cloud;
+  Sprites.stone = by.stone;
+  Sprites.platformWood = by.platform_wood;
+  Sprites.tileForest = by.tile_forest;
+  Sprites.tileDirt = by.tile_dirt;
+  Sprites.tileQuartzite = by.tile_quartzite;
+  Sprites.tileSand = by.tile_sand;
+  return true;
+}
+
 function buildAtlas() {
   Sprites.hiker = [makeSprite(HIKER_A), makeSprite(HIKER_B)];
   Sprites.hikerJump = makeSprite(HIKER_JUMP);

@@ -65,6 +65,7 @@ function toast(msg) { toastText = msg; toastT = 2.5; }
 // ---------------------------------------------------------------- state ---
 async function boot() {
   buildAtlas();
+  await loadSpriteSheet(); // styled art overrides placeholders when present
   dayCfg = await (await fetch("data/levels/day1.json")).json();
   await music.load(dayCfg.playlist);
   const first = music.songs[dayCfg.playlist[0]];
@@ -223,8 +224,15 @@ function render(dt) {
   if (bgPulse > 0) { g.fillStyle = `rgba(255,255,255,${bgPulse * 0.07})`; g.fillRect(0, 0, VIEW_W, VIEW_H); }
 
   // sun sliding across the day
-  g.fillStyle = "#fff7d6";
-  g.beginPath(); g.arc(60 + p * 340, 50 + Math.sin(p * Math.PI) * -15, 12, 0, 7); g.fill();
+  const sunX = 60 + p * 340, sunY = 50 + Math.sin(p * Math.PI) * -15;
+  if (Sprites.sun) g.drawImage(Sprites.sun, sunX - 12, sunY - 12);
+  else { g.fillStyle = "#fff7d6"; g.beginPath(); g.arc(sunX, sunY, 12, 0, 7); g.fill(); }
+  if (Sprites.cloud) {
+    for (let i = 0; i < 3; i++) {
+      const cx = ((i * 210 + 40 - camX * 0.08) % (VIEW_W + 60) + VIEW_W + 60) % (VIEW_W + 60) - 30;
+      g.drawImage(Sprites.cloud, cx, 28 + i * 26);
+    }
+  }
 
   // white quartzite ridge (parallax far)
   g.fillStyle = "#e9e7df";
@@ -248,14 +256,21 @@ function render(dt) {
   g.save();
   g.translate(-Math.round(camX), -Math.round(camY));
 
-  // terrain columns
+  // terrain columns (sheet tiles when styled art is loaded)
   const c0 = Math.floor(camX / TILE), c1 = Math.min(level.cols - 1, c0 + VIEW_W / TILE + 1);
   for (let c = c0; c <= c1; c++) {
     const x = c * TILE, top = level.top[c], biome = level.biomeOf(c);
-    if (biome === "quartzite") {
+    const inLakebed = level.waterSurfaceAt(x + 8) !== null;
+    const tile = inLakebed ? Sprites.tileSand
+      : biome === "quartzite" ? Sprites.tileQuartzite : Sprites.tileForest;
+    if (tile) {
+      g.drawImage(tile, x, top);
+      const below = (biome === "quartzite" || inLakebed) ? tile : (Sprites.tileDirt || tile);
+      for (let y = top + TILE; y < VIEW_H; y += TILE) g.drawImage(below, x, y);
+    } else if (biome === "quartzite") {
       g.fillStyle = "#f4f1ea"; g.fillRect(x, top, TILE, VIEW_H - top);
       g.fillStyle = "#d8d3c6"; g.fillRect(x, top + 6, TILE, 2);
-    } else if (level.waterSurfaceAt(x + 8) !== null) {
+    } else if (inLakebed) {
       g.fillStyle = "#cbb27f"; g.fillRect(x, top, TILE, VIEW_H - top); // lakebed sand
     } else {
       g.fillStyle = "#5d8a44"; g.fillRect(x, top, TILE, 5);
@@ -273,9 +288,15 @@ function render(dt) {
   // platforms
   for (const pf of level.platforms) {
     if (pf.x + pf.w < camX || pf.x > camX + VIEW_W) continue;
-    g.fillStyle = pf.stone ? "#cfc9bd" : "#8a6a48";
-    g.fillRect(pf.x, pf.y, pf.w, pf.stone ? 8 : 5);
-    if (!pf.stone) { g.fillStyle = "#6d4c33"; g.fillRect(pf.x, pf.y + 5, pf.w, 2); }
+    if (pf.stone && Sprites.stone) g.drawImage(Sprites.stone, pf.x, pf.y, pf.w, 10);
+    else if (!pf.stone && Sprites.platformWood) {
+      for (let x = pf.x; x < pf.x + pf.w; x += TILE)
+        g.drawImage(Sprites.platformWood, 0, 0, Math.min(TILE, pf.x + pf.w - x), 8, x, pf.y, Math.min(TILE, pf.x + pf.w - x), 8);
+    } else {
+      g.fillStyle = pf.stone ? "#cfc9bd" : "#8a6a48";
+      g.fillRect(pf.x, pf.y, pf.w, pf.stone ? 8 : 5);
+      if (!pf.stone) { g.fillStyle = "#6d4c33"; g.fillRect(pf.x, pf.y + 5, pf.w, 2); }
+    }
   }
 
   // props: sign, cairns, tent
@@ -319,6 +340,17 @@ function render(dt) {
 }
 
 function drawDecor(g, d) {
+  // styled sheet art takes over when loaded; procedural shapes otherwise
+  const sheetSpr = d.type === "tree" ? (d.s < 1.1 ? Sprites.treeSmall : Sprites.treeLarge)
+    : d.type === "boulder" ? Sprites.boulder
+    : d.type === "reed" ? Sprites.reed
+    : d.type === "flower" ? Sprites.flower : null;
+  if (sheetSpr) {
+    const k = d.type === "tree" ? d.s * 0.8 : d.s;
+    const w = sheetSpr.width * k, h = sheetSpr.height * k;
+    g.drawImage(sheetSpr, d.x - w / 2, d.y - h, w, h);
+    return;
+  }
   if (d.type === "tree") {
     const s = d.s;
     g.fillStyle = "#6d4c33"; g.fillRect(d.x - 2 * s, d.y - 26 * s, 4 * s, 26 * s);

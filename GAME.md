@@ -83,8 +83,15 @@ topbar). Decisions locked in with George:
   `bear: true` on night 4 for the bear-poo cameo.
 
 Still to build: days 2-6 (incl. day-2 matches pickup → better night
-recovery, day-4 Silver Peak hiker crowds), food-hang mini-game, real
-sprite art, night GIFs, per-day biome tuning.
+recovery, day-4 Silver Peak hiker crowds), food-hang mini-game, night
+GIFs, per-day biome tuning.
+
+**Sprite art**: full GPT-iteration pipeline in place — see
+`tools/SPRITESHEET.md`. One labeled template sheet (all sprites, props,
+decor, terrain tiles) goes to GPT for restyling;
+`tools/normalize_spritesheet.py` turns the result into
+`game/img/spritesheet.png`, which the game auto-loads over the code-drawn
+placeholders (commit that png from George's machine).
 
 ## Constraints carried over from the site
 

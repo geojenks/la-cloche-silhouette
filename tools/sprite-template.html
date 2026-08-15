@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>sprite sheet template renderer</title>
+<style>body{background:#222;margin:0}canvas{image-rendering:pixelated}</style>
+</head>
+<body>
+<!-- Renders the GPT-iteration sprite sheet template from the game's current
+     placeholder art + the grid manifest. Open via a local server from the
+     repo root (paths are relative), e.g.:
+       npx http-server -p 8123   →  http://localhost:8123/tools/sprite-template.html
+     Then save the canvas as an image (or use tools/render_sprite_template.js).
+     The output goes to GPT with a prompt like the one in tools/SPRITESHEET.md. -->
+<canvas id="sheet"></canvas>
+<script src="../game/js/sprites.js"></script>
+<script>
+"use strict";
+const SCALE = 4; // template is rendered big so image models can work with it
+
+// Procedural sprites (decor/tiles) drawn to a w×h native box — these mirror
+// what game/js/game.js draws in code today, so the template shows real art.
+const PROC = {
+  tree(g, w, h) {
+    const tw = Math.max(3, Math.round(w * 0.12));
+    g.fillStyle = "#6d4c33"; g.fillRect(w / 2 - tw / 2, h * 0.55, tw, h * 0.45);
+    g.fillStyle = "#3e6b2f";
+    for (let i = 0; i < 3; i++) {
+      const lw = w * (1 - i * 0.22), y = h * (0.62 - i * 0.2);
+      g.beginPath(); g.moveTo(w / 2 - lw / 2, y); g.lineTo(w / 2 + lw / 2, y);
+      g.lineTo(w / 2, y - h * 0.28); g.fill();
+    }
+  },
+  boulder(g, w, h) {
+    g.fillStyle = "#e3e0d6";
+    g.beginPath(); g.ellipse(w / 2, h * 0.6, w * 0.45, h * 0.4, 0, 0, 7); g.fill();
+    g.fillStyle = "#c9c4b6"; g.fillRect(w * 0.2, h * 0.5, w * 0.4, 2);
+  },
+  reed(g, w, h) {
+    g.strokeStyle = "#4e7a3a"; g.lineWidth = 1.5;
+    for (let i = -1; i <= 1; i++) {
+      g.beginPath(); g.moveTo(w / 2 + i * 3, h);
+      g.quadraticCurveTo(w / 2 + i * 5, h * 0.5, w / 2 + i * 4, h * 0.1); g.stroke();
+    }
+  },
+  flower(g, w, h) {
+    g.fillStyle = "#e74c3c"; g.fillRect(w / 2 - 2, 0, 4, 4);
+    g.fillStyle = "#4e7a3a"; g.fillRect(w / 2 - 1, 4, 2, h - 4);
+  },
+  sun(g, w, h) {
+    g.fillStyle = "#fff7d6";
+    g.beginPath(); g.arc(w / 2, h / 2, Math.min(w, h) / 2 - 1, 0, 7); g.fill();
+  },
+  cloud(g, w, h) {
+    g.fillStyle = "#ffffff";
+    g.beginPath();
+    g.ellipse(w * 0.35, h * 0.6, w * 0.3, h * 0.35, 0, 0, 7);
+    g.ellipse(w * 0.62, h * 0.5, w * 0.28, h * 0.4, 0, 0, 7);
+    g.ellipse(w * 0.8, h * 0.65, w * 0.18, h * 0.28, 0, 0, 7);
+    g.fill();
+  },
+  stone(g, w, h) {
+    g.fillStyle = "#cfc9bd"; g.fillRect(0, 0, w, h * 0.8);
+    g.fillStyle = "#b3ada0"; g.fillRect(0, h * 0.5, w, 2);
+  },
+  platform_wood(g, w, h) {
+    g.fillStyle = "#8a6a48"; g.fillRect(0, 0, w, h - 3);
+    g.fillStyle = "#6d4c33"; g.fillRect(0, h - 3, w, 3);
+  },
+  tile_forest(g, w, h) {
+    g.fillStyle = "#5d8a44"; g.fillRect(0, 0, w, 5);
+    g.fillStyle = "#573b26"; g.fillRect(0, 5, w, 2);
+    g.fillStyle = "#6d4c33"; g.fillRect(0, 7, w, h - 7);
+  },
+  tile_dirt(g, w, h) {
+    g.fillStyle = "#6d4c33"; g.fillRect(0, 0, w, h);
+    g.fillStyle = "#573b26"; g.fillRect(3, 4, 3, 2); g.fillRect(10, 11, 4, 2);
+  },
+  tile_quartzite(g, w, h) {
+    g.fillStyle = "#f4f1ea"; g.fillRect(0, 0, w, h);
+    g.fillStyle = "#d8d3c6"; g.fillRect(0, 6, w, 2); g.fillRect(8, 12, 6, 2);
+  },
+  tile_sand(g, w, h) {
+    g.fillStyle = "#cbb27f"; g.fillRect(0, 0, w, h);
+    g.fillStyle = "#b89d68"; g.fillRect(2, 5, 4, 2); g.fillRect(9, 11, 5, 2);
+  },
+};
+
+async function main() {
+  buildAtlas();
+  const mf = await (await fetch("../game/data/spritesheet.json")).json();
+  const W = mf.cols * mf.cell.w, H = mf.header + (Math.max(...mf.sprites.map(s => s.cell[1])) + 1) * mf.cell.h;
+  const c = document.getElementById("sheet");
+  c.width = W * SCALE; c.height = H * SCALE;
+  const g = c.getContext("2d");
+  g.imageSmoothingEnabled = false;
+  g.scale(SCALE, SCALE);
+
+  g.fillStyle = mf.background; g.fillRect(0, 0, W, H);
+  g.fillStyle = "#000"; g.font = "6px monospace";
+  g.fillText("LA CLOCHE SPRITE SHEET — restyle art; keep grid, positions,", 4, 7);
+  g.fillText("sizes & magenta bg. labels are not art. one sprite per cell,", 4, 15);
+  g.fillText("centered. crisp pixel art, no anti-aliasing.", 4, 23);
+
+  const artH = mf.cell.h - mf.cell.label;
+  for (const s of mf.sprites) {
+    const cx = s.cell[0] * mf.cell.w, cy = mf.header + s.cell[1] * mf.cell.h;
+    // faint cell outline (on the background, outside art) + label
+    g.strokeStyle = "#c000c0"; g.lineWidth = 0.5;
+    g.strokeRect(cx + 0.5, cy + 0.5, mf.cell.w - 1, mf.cell.h - 1);
+    g.fillStyle = "#000"; g.font = "5px monospace"; g.textAlign = "center";
+    g.fillText(s.name, cx + mf.cell.w / 2, cy + artH + 8);
+    g.textAlign = "left";
+    const px = cx + Math.floor((mf.cell.w - s.w) / 2);
+    const py = cy + Math.floor((artH - s.h) / 2);
+    if (s.atlas) {
+      const spr = s.frame !== undefined ? Sprites[s.atlas][s.frame] : Sprites[s.atlas];
+      g.drawImage(spr, 0, 0, spr.width, spr.height, px, py, s.w, s.h);
+    } else if (PROC[s.proc]) {
+      g.save(); g.translate(px, py);
+      g.beginPath(); g.rect(0, 0, s.w, s.h); g.clip();
+      PROC[s.proc](g, s.w, s.h);
+      g.restore();
+    }
+  }
+  document.title = "sprite template ready";
+}
+main();
+</script>
+</body>
+</html>

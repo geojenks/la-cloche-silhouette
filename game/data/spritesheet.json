@@ -1,0 +1,45 @@
+{
+  "comment": "Single source of truth for the sprite-sheet grid. Used by tools/sprite-template.html (renders the GPT template), tools/normalize_spritesheet.py (slices GPT output back to native pixels) and game/js/sprites.js (loads game/img/spritesheet.png at boot). Cell sizes are native pixels; sprites sit centered in each cell's art area (cell.h minus cell.label). 'atlas'/'frame' entries come from the code-drawn atlas; 'proc' entries are drawn procedurally by the template page.",
+  "cell": { "w": 48, "h": 76, "label": 12 },
+  "cols": 7,
+  "header": 24,
+  "background": "#ff00ff",
+  "sprites": [
+    { "name": "hiker_walk_a", "cell": [0, 0], "w": 12, "h": 18, "atlas": "hiker", "frame": 0 },
+    { "name": "hiker_walk_b", "cell": [1, 0], "w": 12, "h": 18, "atlas": "hiker", "frame": 1 },
+    { "name": "hiker_jump",   "cell": [2, 0], "w": 12, "h": 18, "atlas": "hikerJump" },
+    { "name": "hiker_trudge", "cell": [3, 0], "w": 12, "h": 18, "atlas": "hikerTrudge" },
+    { "name": "chipmunk_a",   "cell": [4, 0], "w": 12, "h": 8,  "atlas": "chip", "frame": 0 },
+    { "name": "chipmunk_b",   "cell": [5, 0], "w": 12, "h": 8,  "atlas": "chip", "frame": 1 },
+    { "name": "chipmunk_squash", "cell": [6, 0], "w": 12, "h": 8, "atlas": "chipSquash" },
+
+    { "name": "frog_sit",  "cell": [0, 1], "w": 10, "h": 8,  "atlas": "frog", "frame": 0 },
+    { "name": "frog_leap", "cell": [1, 1], "w": 10, "h": 8,  "atlas": "frog", "frame": 1 },
+    { "name": "snake_a",   "cell": [2, 1], "w": 22, "h": 8,  "atlas": "snake", "frame": 0 },
+    { "name": "snake_b",   "cell": [3, 1], "w": 22, "h": 8,  "atlas": "snake", "frame": 1 },
+    { "name": "bird_a",    "cell": [4, 1], "w": 16, "h": 10, "atlas": "bird", "frame": 0 },
+    { "name": "bird_b",    "cell": [5, 1], "w": 16, "h": 10, "atlas": "bird", "frame": 1 },
+    { "name": "snack",     "cell": [6, 1], "w": 8,  "h": 8,  "atlas": "snack" },
+
+    { "name": "star",     "cell": [0, 2], "w": 9,  "h": 8,  "atlas": "star" },
+    { "name": "matchbox", "cell": [1, 2], "w": 8,  "h": 4,  "atlas": "matchbox" },
+    { "name": "sign",     "cell": [2, 2], "w": 10, "h": 7,  "atlas": "sign" },
+    { "name": "cairn",    "cell": [3, 2], "w": 10, "h": 7,  "atlas": "cairn" },
+    { "name": "tent",     "cell": [4, 2], "w": 28, "h": 14, "atlas": "tent" },
+    { "name": "stone",    "cell": [5, 2], "w": 32, "h": 10, "proc": "stone" },
+    { "name": "platform_wood", "cell": [6, 2], "w": 16, "h": 8, "proc": "platform_wood" },
+
+    { "name": "tree_small", "cell": [0, 3], "w": 28, "h": 36, "proc": "tree" },
+    { "name": "tree_large", "cell": [1, 3], "w": 40, "h": 56, "proc": "tree" },
+    { "name": "boulder",    "cell": [2, 3], "w": 28, "h": 18, "proc": "boulder" },
+    { "name": "reed",       "cell": [3, 3], "w": 14, "h": 20, "proc": "reed" },
+    { "name": "flower",     "cell": [4, 3], "w": 6,  "h": 8,  "proc": "flower" },
+    { "name": "sun",        "cell": [5, 3], "w": 24, "h": 24, "proc": "sun" },
+    { "name": "cloud",      "cell": [6, 3], "w": 28, "h": 14, "proc": "cloud" },
+
+    { "name": "tile_forest",    "cell": [0, 4], "w": 16, "h": 16, "proc": "tile_forest" },
+    { "name": "tile_dirt",      "cell": [1, 4], "w": 16, "h": 16, "proc": "tile_dirt" },
+    { "name": "tile_quartzite", "cell": [2, 4], "w": 16, "h": 16, "proc": "tile_quartzite" },
+    { "name": "tile_sand",      "cell": [3, 4], "w": 16, "h": 16, "proc": "tile_sand" }
+  ]
+}
