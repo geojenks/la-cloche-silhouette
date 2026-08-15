@@ -1,0 +1,51 @@
+{
+  "title": "Trailhead (test loop)",
+  "artist": "original chiptune \u2014 placeholder",
+  "file": "media/audio_game/trailhead-test.mp3",
+  "bpm": 112.0,
+  "offset": 0.0,
+  "beatsPerBar": 4,
+  "duration": 223.9,
+  "sections": [
+    {
+      "t": 0.0,
+      "name": "intro",
+      "intensity": 0
+    },
+    {
+      "t": 17.143,
+      "name": "verse",
+      "intensity": 1
+    },
+    {
+      "t": 51.429,
+      "name": "chorus",
+      "intensity": 2
+    },
+    {
+      "t": 85.714,
+      "name": "verse",
+      "intensity": 1
+    },
+    {
+      "t": 120.0,
+      "name": "chorus",
+      "intensity": 3
+    },
+    {
+      "t": 154.286,
+      "name": "bridge",
+      "intensity": 0
+    },
+    {
+      "t": 171.429,
+      "name": "chorus",
+      "intensity": 3
+    },
+    {
+      "t": 205.714,
+      "name": "outro",
+      "intensity": 1
+    }
+  ]
+}
