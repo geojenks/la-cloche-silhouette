@@ -43,6 +43,41 @@ any editor rather than re-rolling the whole sheet; the normalizer samples
 the sheet's corners for the background color, so a slightly-off magenta
 still keys out.
 
+## Mood variant sheets (calm / dance / rave)
+
+The game switches sprite sets live with the music: song sections map to a
+mood — intensity 0 = `calm`, 1 = base, 2 = `dance`, 3 = `rave` (or a
+section can name one explicitly with `"mood": "rave"` in its song JSON).
+In dance/rave the hiker also grooves on the spot, stepping through the walk
+frames on every beat, and the screen pulses magenta/cyan per bar in rave.
+
+Variant sheets are **partial**: same grid as the base sheet, but you only
+draw the cells that change for that mood — leave every other cell pure
+magenta and the game falls back to the base art for those sprites
+per-sprite. The walk/flap `_a`/`_b` cells are the animation frames, so the
+rave sheet's `hiker_walk_a/b` are literally the dance steps.
+
+Workflow: style the base sheet first, then give GPT *the styled base
+sheet* and ask for e.g. "the rave variant: same grid, redraw only the
+hiker frames (dancing, glowsticks), the chipmunk frames (bopping), and the
+sun (disco ball); every other cell pure magenta." Normalize each variant
+to its own file:
+
+    python3 tools/normalize_spritesheet.py styled-rave.png \
+        --out game/img/spritesheet-rave.png
+
+The base sheet is required for any of this (`game/img/spritesheet.png`);
+variants are optional and can be added one mood at a time.
+
+## More sheets as the game grows
+
+This sheet is the Day-1 set, not the whole game. Days 2-6 will add cells
+(hiker trio, Silver Peak crowd, the bear, food-hang props, swamp tiles,
+campfire frames...) — either as new rows in this manifest or as a second
+manifest+sheet pair when this one gets crowded. To keep every sheet in one
+style, always hand GPT your already-styled sheet as the style reference
+when generating the next one.
+
 ## Adding a sprite later
 
 Add its entry to `game/data/spritesheet.json` (name, cell, native w/h),

@@ -4,6 +4,7 @@
   "cols": 7,
   "header": 24,
   "background": "#ff00ff",
+  "moods": ["calm", "dance", "rave"],
   "sprites": [
     { "name": "hiker_walk_a", "cell": [0, 0], "w": 12, "h": 18, "atlas": "hiker", "frame": 0 },
     { "name": "hiker_walk_b", "cell": [1, 0], "w": 12, "h": 18, "atlas": "hiker", "frame": 1 },

@@ -61,7 +61,7 @@ class Player {
     this.stamina = 100; this.trudge = false;
     this.invuln = 0; this.swimming = false;
     this.anim = 0; this.snacks = 0; this.stars = 0;
-    this.superBounceT = 0;
+    this.superBounceT = 0; this.dancing = false;
   }
 
   get maxRun() { return this.swimming ? 90 : this.trudge ? 55 : MAX_RUN; }
@@ -122,6 +122,7 @@ class Player {
     if (this.swimming) return this.facing > 0 ? Sprites.hikerJump : Sprites.hikerJumpL;
     if (!this.onGround) return this.facing > 0 ? Sprites.hikerJump : Sprites.hikerJumpL;
     if (this.trudge) return this.facing > 0 ? Sprites.hikerTrudge : Sprites.hikerTrudgeL;
+    // dancing: walk frames double as dance steps, flipping on the beat
     const f = Math.floor(this.anim) % 2;
     return (this.facing > 0 ? Sprites.hiker : Sprites.hikerL)[f];
   }

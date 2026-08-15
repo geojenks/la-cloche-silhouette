@@ -15,6 +15,10 @@ let level = null, player = null, enemies = [], state = "boot";
 let camX = 0, camY = 0, bgPulse = 0, elapsed = 0, fade = 0;
 let checkpoint = null, spawnAlt = 0, toastT = 0, toastText = "";
 let dayCfg = null, nightAnim = 0;
+// sprite mood follows the music: section.mood if the song JSON names one,
+// else mapped from section intensity
+const MOOD_BY_INTENSITY = ["calm", "hike", "dance", "rave"];
+let mood = "hike";
 
 // ---------------------------------------------------------------- input ---
 const input = { left: false, right: false, jump: false, jumpPressed: false };
@@ -65,7 +69,7 @@ function toast(msg) { toastText = msg; toastT = 2.5; }
 // ---------------------------------------------------------------- state ---
 async function boot() {
   buildAtlas();
-  await loadSpriteSheet(); // styled art overrides placeholders when present
+  await loadSpriteSheets(); // styled art (+mood variants) overrides placeholders
   dayCfg = await (await fetch("data/levels/day1.json")).json();
   await music.load(dayCfg.playlist);
   const first = music.songs[dayCfg.playlist[0]];
@@ -176,6 +180,13 @@ function updatePlay(dt) {
   if (beats.some(b => b.type === "downbeat")) bgPulse = 1;
   bgPulse = Math.max(0, bgPulse - dt * 2.5);
 
+  const m = sec.mood || MOOD_BY_INTENSITY[Math.max(0, Math.min(3, sec.intensity))];
+  if (m !== mood) { mood = m; setSpriteMood(mood); }
+  // in dance/rave the hiker grooves on the spot to the beat
+  player.dancing = (mood === "dance" || mood === "rave") && player.onGround &&
+    Math.abs(player.vx) < 5 && !player.swimming && !player.trudge;
+  if (player.dancing) player.anim = music.lastBeat;
+
   const prevBottom = player.y + player.h, prevTop = player.y;
   player.update(dt, input, level);
   music.underwater(player.swimming);
@@ -221,7 +232,12 @@ function render(dt) {
   grd.addColorStop(1, "#e8ecda");
   g.fillStyle = grd;
   g.fillRect(0, 0, VIEW_W, VIEW_H);
-  if (bgPulse > 0) { g.fillStyle = `rgba(255,255,255,${bgPulse * 0.07})`; g.fillRect(0, 0, VIEW_W, VIEW_H); }
+  if (bgPulse > 0) {
+    // rave sections pulse in colour, alternating per bar
+    const raveCol = music.playing && Math.floor(music.lastBeat / 4) % 2 ? "0,255,255" : "255,0,255";
+    g.fillStyle = mood === "rave" ? `rgba(${raveCol},${bgPulse * 0.1})` : `rgba(255,255,255,${bgPulse * 0.07})`;
+    g.fillRect(0, 0, VIEW_W, VIEW_H);
+  }
 
   // sun sliding across the day
   const sunX = 60 + p * 340, sunY = 50 + Math.sin(p * Math.PI) * -15;
@@ -474,5 +490,6 @@ window.__game = {
   get state() { return state; }, get player() { return player; },
   get enemies() { return enemies; }, get level() { return level; },
   get camX() { return camX; }, get checkpoint() { return checkpoint; },
+  get mood() { return mood; },
   music, resetToCheckpoint,
 };
