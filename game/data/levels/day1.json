@@ -1,0 +1,14 @@
+{
+  "day": 1,
+  "name": "Trailhead to H20",
+  "km": 26.7,
+  "seed": 108,
+  "playlist": ["trailhead-test"],
+  "lakes": [{ "at": 0.45 }],
+  "night": {
+    "index": 1,
+    "gif": null,
+    "caption": "Night 1 — H20, first camp",
+    "bear": false
+  }
+}

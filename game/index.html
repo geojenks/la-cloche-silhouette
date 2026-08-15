@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>La Cloche Silhouette — the game</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='80' font-size='85'>🎮</text></svg>">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; background: #101418; overflow: hidden;
+    font-family: monospace; touch-action: none; overscroll-behavior: none; }
+  #wrap { position: relative; width: 100%; height: 100%;
+    display: flex; align-items: center; justify-content: center; }
+  canvas { image-rendering: pixelated; image-rendering: crisp-edges;
+    width: 100%; max-height: 100%; aspect-ratio: 16/9; object-fit: contain;
+    background: #101418; }
+  .ctl { position: absolute; bottom: 4%; width: 64px; height: 64px;
+    border-radius: 50%; border: 2px solid rgba(255,255,255,.5);
+    background: rgba(255,255,255,.12); color: #fff; font-size: 26px;
+    display: flex; align-items: center; justify-content: center;
+    user-select: none; -webkit-user-select: none; touch-action: none; }
+  .ctl:active { background: rgba(255,255,255,.3); }
+  #btnL { left: 4%; } #btnR { left: calc(4% + 76px); } #btnJ { right: 4%; }
+  #topbtns { position: absolute; top: 6px; left: 50%; transform: translateX(-50%);
+    display: flex; gap: 6px; }
+  #topbtns button { background: rgba(0,0,0,.45); color: #fff; border: 1px solid rgba(255,255,255,.4);
+    border-radius: 6px; font-family: monospace; font-size: 13px; padding: 4px 10px; }
+  a#back { position: absolute; top: 6px; left: 6px; color: rgba(255,255,255,.7);
+    background: rgba(0,0,0,.45); border-radius: 6px; padding: 4px 8px;
+    text-decoration: none; font-size: 12px; }
+  @media (pointer: fine) { .ctl { display: none; } }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="game"></canvas>
+  <a id="back" href="../index.html">⛺ map</a>
+  <div id="topbtns">
+    <button id="btnPrev" title="previous song">⏮</button>
+    <button id="btnNext" title="next song">⏭</button>
+    <button id="btnReset" title="back to last checkpoint, full stamina">🔄</button>
+  </div>
+  <div id="btnL" class="ctl">◀</div>
+  <div id="btnR" class="ctl">▶</div>
+  <div id="btnJ" class="ctl">⤒</div>
+</div>
+<script src="js/sprites.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/level.js"></script>
+<script src="js/entities.js"></script>
+<script src="js/game.js"></script>
+</body>
+</html>
