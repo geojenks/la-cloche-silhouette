@@ -15,9 +15,9 @@ game slice it back apart.
    pixel-perfection — step 3 re-pixelates everything anyway.
 3. **Normalize** — `python3 tools/normalize_spritesheet.py styled.png`
    slices by the grid, downscales each sprite to true pixel size, keys the
-   background to transparency, and writes `game/img/spritesheet.png`
+   background to transparency, and writes `game/data/sprites/base.png`
    (plus a `.preview.png` at 4x to eyeball).
-4. **Play** — the game auto-loads `game/img/spritesheet.png` at boot and
+4. **Play** — the game auto-loads `game/data/sprites/base.png` at boot and
    uses it for everything: characters, enemies, props, decor, terrain
    tiles, sun/clouds. Delete the file to get the code-drawn placeholders
    back. Commit it from George's machine (cloud sessions can't push
@@ -43,13 +43,12 @@ any editor rather than re-rolling the whole sheet; the normalizer samples
 the sheet's corners for the background color, so a slightly-off magenta
 still keys out.
 
-## Mood variant sheets (calm / dance / rave)
+## Hype variant sheets (0 calm / 2 dance / 3 rave)
 
-The game switches sprite sets live with the music: song sections map to a
-mood — intensity 0 = `calm`, 1 = base, 2 = `dance`, 3 = `rave` (or a
-section can name one explicitly with `"mood": "rave"` in its song JSON).
-In dance/rave the hiker also grooves on the spot, stepping through the walk
-frames on every beat, and the screen pulses magenta/cyan per bar in rave.
+The game switches sprite sets live with the music's hype = each song
+section's `intensity` (0 calm, 1 default hike, 2 dance, 3 rave). At hype
+2+ the hiker grooves on the spot, stepping through the walk frames on
+every beat; at hype 3 the screen pulses magenta/cyan per bar.
 
 Variant sheets are **partial**: same grid as the base sheet, but you only
 draw the cells that change for that mood — leave every other cell pure
@@ -63,11 +62,12 @@ hiker frames (dancing, glowsticks), the chipmunk frames (bopping), and the
 sun (disco ball); every other cell pure magenta." Normalize each variant
 to its own file:
 
-    python3 tools/normalize_spritesheet.py styled-rave.png \
-        --out game/img/spritesheet-rave.png
+    python3 tools/normalize_spritesheet.py styled-rave.png --hype 3
+    # → game/data/sprites/hype3.png
 
-The base sheet is required for any of this (`game/img/spritesheet.png`);
-variants are optional and can be added one mood at a time.
+The base sheet is required for any of this (`game/data/sprites/base.png`);
+variants are optional and can be added one hype level at a time. Keep the
+raw GPT sheets in `game/data/sprites/src/` for re-rolls.
 
 ## More sheets as the game grows
 

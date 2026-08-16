@@ -1,7 +1,7 @@
 // Programmatic pixel-art atlas. Every sprite is a small char-map rendered
 // once into an offscreen canvas at boot. Placeholder art — real pixel art
 // (GPT-generated from trip photos) can replace any entry later by dropping
-// a PNG in game/img/ and swapping the lookup, without touching game code.
+// a styled sheet in game/data/sprites/ — see tools/SPRITESHEET.md.
 "use strict";
 
 const PAL = {
@@ -302,12 +302,13 @@ const MATCHBOX = [
 
 const Sprites = {};
 
-// Sheet-based art, with music-mood variants. The base sheet
-// (game/img/spritesheet.png) restyles everything; per-mood sheets
-// (spritesheet-calm.png / -dance.png / -rave.png, same grid) are PARTIAL —
-// only the cells they redraw override the base, everything else falls
-// through. setSpriteMood() swaps the live set when the music's section
-// mood changes. All produced by tools/normalize_spritesheet.py.
+// Sheet-based art, with music-hype variants (hype = the song section's
+// intensity, 0-3). game/data/sprites/base.png (hype 1, the default) restyles
+// everything; hype0/hype2/hype3.png (same grid) are PARTIAL — only the
+// cells they redraw override the base, everything else falls through.
+// setSpriteMood() swaps the live set when the music's hype changes. All
+// produced by tools/normalize_spritesheet.py; raw GPT sheets live in
+// game/data/sprites/src/.
 const SpriteSets = { base: null, variants: {} };
 
 function sliceSheet(mf, img, partial) {
@@ -357,10 +358,10 @@ function sliceSheet(mf, img, partial) {
   return S;
 }
 
-function setSpriteMood(mood) {
+function setSpriteMood(hype) {
   if (!SpriteSets.base) return; // placeholders have no variants
-  // clear decor/tile keys a previous variant may have set, then re-apply
-  Object.assign(Sprites, SpriteSets.base, SpriteSets.variants[mood] || {});
+  // re-assert base first so keys from a previous variant are cleared
+  Object.assign(Sprites, SpriteSets.base, SpriteSets.variants[hype] || {});
 }
 
 async function loadSpriteSheets() {
@@ -372,12 +373,12 @@ async function loadSpriteSheets() {
     i.src = src;
   });
   let img;
-  try { img = await loadImg("img/spritesheet.png"); } catch (e) { return false; }
+  try { img = await loadImg("data/sprites/base.png"); } catch (e) { return false; }
   SpriteSets.base = sliceSheet(mf, img, false);
   Object.assign(Sprites, SpriteSets.base);
-  for (const mood of mf.moods || []) {
+  for (const hype of mf.hypes || [0, 2, 3]) {
     try {
-      SpriteSets.variants[mood] = sliceSheet(mf, await loadImg(`img/spritesheet-${mood}.png`), true);
+      SpriteSets.variants[hype] = sliceSheet(mf, await loadImg(`data/sprites/hype${hype}.png`), true);
     } catch (e) { /* variant sheet not made yet — base covers it */ }
   }
   return true;

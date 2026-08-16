@@ -8,13 +8,18 @@ the magenta), and writes the clean transparent atlas the game loads.
 
 Usage:
     python3 tools/normalize_spritesheet.py styled-sheet.png
-    # → game/img/spritesheet.png  (+ preview at 4x for eyeballing)
+    # → game/data/sprites/base.png  (+ preview at 4x for eyeballing)
+    python3 tools/normalize_spritesheet.py styled-rave.png --hype 3
+    # → game/data/sprites/hype3.png (partial variant: cells left magenta
+    #   in the styled sheet stay empty and fall back to base in-game)
 
 Options:
     --manifest game/data/spritesheet.json   grid layout (default)
-    --out game/img/spritesheet.png          output path (default)
+    --hype N                                write hypeN.png instead of base
+    --out PATH                              explicit output path (overrides)
     --key-threshold 90                      bg color distance for transparency
 
+Keep the raw GPT sheets in game/data/sprites/src/ so re-rolls have history.
 Deps: pip install pillow
 """
 
@@ -31,9 +36,13 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("input")
     ap.add_argument("--manifest", default=str(ROOT / "game/data/spritesheet.json"))
-    ap.add_argument("--out", default=str(ROOT / "game/img/spritesheet.png"))
+    ap.add_argument("--hype", type=int, choices=[0, 1, 2, 3], default=None)
+    ap.add_argument("--out", default=None)
     ap.add_argument("--key-threshold", type=int, default=90)
     args = ap.parse_args()
+    if args.out is None:
+        name = "base.png" if args.hype in (None, 1) else f"hype{args.hype}.png"
+        args.out = str(ROOT / "game/data/sprites" / name)
 
     mf = json.loads(Path(args.manifest).read_text())
     src = Image.open(args.input).convert("RGB")

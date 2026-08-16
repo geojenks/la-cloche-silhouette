@@ -90,8 +90,9 @@ GIFs, per-day biome tuning.
 `tools/SPRITESHEET.md`. One labeled template sheet (all sprites, props,
 decor, terrain tiles) goes to GPT for restyling;
 `tools/normalize_spritesheet.py` turns the result into
-`game/img/spritesheet.png`, which the game auto-loads over the code-drawn
-placeholders (commit that png from George's machine).
+`game/data/sprites/base.png` (+ optional partial `hype0/2/3.png` variants
+that switch with the music), which the game auto-loads over the code-drawn
+placeholders. Raw GPT sheets live in `game/data/sprites/src/`.
 
 ## Constraints carried over from the site
 

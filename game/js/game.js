@@ -15,10 +15,9 @@ let level = null, player = null, enemies = [], state = "boot";
 let camX = 0, camY = 0, bgPulse = 0, elapsed = 0, fade = 0;
 let checkpoint = null, spawnAlt = 0, toastT = 0, toastText = "";
 let dayCfg = null, nightAnim = 0;
-// sprite mood follows the music: section.mood if the song JSON names one,
-// else mapped from section intensity
-const MOOD_BY_INTENSITY = ["calm", "hike", "dance", "rave"];
-let mood = "hike";
+// sprite set follows the music's hype = section intensity (0 calm,
+// 1 default hike, 2 dance, 3 rave)
+let hype = 1;
 
 // ---------------------------------------------------------------- input ---
 const input = { left: false, right: false, jump: false, jumpPressed: false };
@@ -180,10 +179,10 @@ function updatePlay(dt) {
   if (beats.some(b => b.type === "downbeat")) bgPulse = 1;
   bgPulse = Math.max(0, bgPulse - dt * 2.5);
 
-  const m = sec.mood || MOOD_BY_INTENSITY[Math.max(0, Math.min(3, sec.intensity))];
-  if (m !== mood) { mood = m; setSpriteMood(mood); }
-  // in dance/rave the hiker grooves on the spot to the beat
-  player.dancing = (mood === "dance" || mood === "rave") && player.onGround &&
+  const h = Math.max(0, Math.min(3, sec.intensity));
+  if (h !== hype) { hype = h; setSpriteMood(hype); }
+  // at hype 2+ the hiker grooves on the spot to the beat
+  player.dancing = hype >= 2 && player.onGround &&
     Math.abs(player.vx) < 5 && !player.swimming && !player.trudge;
   if (player.dancing) player.anim = music.lastBeat;
 
@@ -233,9 +232,9 @@ function render(dt) {
   g.fillStyle = grd;
   g.fillRect(0, 0, VIEW_W, VIEW_H);
   if (bgPulse > 0) {
-    // rave sections pulse in colour, alternating per bar
+    // full-hype sections pulse in colour, alternating per bar
     const raveCol = music.playing && Math.floor(music.lastBeat / 4) % 2 ? "0,255,255" : "255,0,255";
-    g.fillStyle = mood === "rave" ? `rgba(${raveCol},${bgPulse * 0.1})` : `rgba(255,255,255,${bgPulse * 0.07})`;
+    g.fillStyle = hype === 3 ? `rgba(${raveCol},${bgPulse * 0.1})` : `rgba(255,255,255,${bgPulse * 0.07})`;
     g.fillRect(0, 0, VIEW_W, VIEW_H);
   }
 
@@ -490,6 +489,6 @@ window.__game = {
   get state() { return state; }, get player() { return player; },
   get enemies() { return enemies; }, get level() { return level; },
   get camX() { return camX; }, get checkpoint() { return checkpoint; },
-  get mood() { return mood; },
+  get hype() { return hype; },
   music, resetToCheckpoint,
 };
