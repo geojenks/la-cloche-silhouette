@@ -82,9 +82,19 @@ topbar). Decisions locked in with George:
   for the pixel-art photo loops (George will make these, e.g. with GPT),
   `bear: true` on night 4 for the bear-poo cameo.
 
+Since added: terrain follows each day's REAL elevation profile (vertical
+deadzone camera; vistas carved at the day's actual local maxima; local
+detail amp in level.js LOCAL_AMP), day cycle sky keyed to progress
+(pre-dawn stars → sunrise → day → sunset; clock in HUD), the player's
+real trail photos pop up as polaroids at their true km (thinned to
+≥600m apart), a rare night bear (huge damage, unkillable, flees if
+charged at or startled), hype-3 sections are a dance truce (enemies bop
+in place, no damage), per-animal death poses, ambush-beeline snakes,
+springy chipmunk stomps (reach bonus spots), synthesized animal SFX.
+
 Still to build: days 2-6 (incl. day-2 matches pickup → better night
 recovery, day-4 Silver Peak hiker crowds), food-hang mini-game, night
-GIFs, per-day biome tuning.
+GIFs, per-day biome tuning, bear-poo night-4 cameo.
 
 **Sprite art**: full GPT-iteration pipeline in place — see
 `tools/SPRITESHEET.md`. One labeled template sheet (all sprites, props,

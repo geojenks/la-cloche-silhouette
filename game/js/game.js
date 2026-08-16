@@ -24,6 +24,7 @@ function fitCanvas() {
 const music = new MusicManager();
 let level = null, player = null, enemies = [], drops = [], state = "boot";
 let camX = 0, camY = 0, bgPulse = 0, elapsed = 0, fade = 0, bgLift = 0;
+let groundedY = 0, bearsSpawned = 0, photoShow = null;
 let checkpoint = null, spawnAlt = 0, toastT = 0, toastText = "";
 let dayCfg = null, nightAnim = 0;
 // sprite set follows the music's hype = section intensity (0 calm,
@@ -84,14 +85,46 @@ async function boot() {
   dayCfg = await (await fetch("data/levels/day1.json")).json();
   await music.load(dayCfg.playlist);
   const first = music.songs[dayCfg.playlist[0]];
-  level = new Level(dayCfg, first.duration);
+
+  // the terrain follows the real elevation profile of this day's walk, and
+  // the actual trail photos appear at their real distances
+  let profile = null, photoSpots = [];
+  try {
+    const site = await (await fetch("../data/site_data.json")).json();
+    const day = site.days.find((d) => d.n === dayCfg.day);
+    profile = site.points
+      .filter((p) => p[2] >= day.start && p[2] <= day.end)
+      .map((p) => [p[2], p[3]]);
+    const seen = [];
+    for (const m of site.media
+      .filter((m) => m.type === "photo" && !m.dropped && m.dist >= day.start && m.dist <= day.end)
+      .sort((a, b) => a.dist - b.dist)) {
+      if (seen.length && m.dist - seen[seen.length - 1].dist < 600) continue; // no bunching
+      seen.push(m);
+    }
+    photoSpots = seen.map((m) => ({
+      file: m.file,
+      frac: (m.dist - day.start) / (day.end - day.start),
+      km: (m.dist - day.start) / 1000,
+      taken: false, img: null,
+    }));
+  } catch (e) { /* profile missing → Level falls back to a flat base */ }
+
+  level = new Level(dayCfg, first.duration, profile);
+  level.photoSpots = photoSpots.map((s) => ({
+    ...s, x: Math.max(120, Math.min(level.tentX - 60, s.frac * level.length)),
+  }));
   state = "title";
 }
 
 function startRun() {
   player = new Player(40, level.groundTop(40) - 20);
   enemies = []; drops = [];
+  bearsSpawned = 0; photoShow = null;
   for (const s of level.spawns) s.done = false;
+  for (const ph of level.photoSpots) ph.taken = false;
+  camY = Math.max(0, Math.min(level.worldH - VIEW_H, player.y - VIEW_H * 0.6));
+  groundedY = player.y;
   checkpoint = level.checkpoints[0];
   elapsed = 0; camX = 0;
   music.initGraph();
@@ -112,6 +145,7 @@ function resetToCheckpoint() {
   player.x = checkpoint.x;
   player.y = level.groundTop(checkpoint.x) - 24;
   player.vx = player.vy = 0;
+  camY = Math.max(0, Math.min(level.worldH - VIEW_H, player.y - VIEW_H * 0.6));
   player.stamina = 100; player.trudge = false; player.invuln = 1;
   enemies = [];
   fade = 0.6;
@@ -160,9 +194,18 @@ function spawnFromBeats(beats, intensity) {
 function spawnDrop(x, y) { drops.push({ x, y, vy: -120 }); }
 
 function handleCollisions(prevBottom, prevTop) {
+  const truce = hype >= 3; // rave sections: everyone's dancing, nobody bites
   for (const e of enemies) {
     if (e.dead || !overlap(player, e)) continue;
-    if (e instanceof Bird) {
+    if (e instanceof Bear) {
+      if (player.vy > 40 && prevBottom <= e.y + 6) {
+        player.vy = -480; player.superBounceT = 0.3; // bounces off — and startles it
+        e.startle(player);
+      } else if (!truce && player.hurt(e.x + e.w / 2, e.damage)) {
+        bgPulse = 1; Sfx.play("thud", 1);
+        e.startle(player);
+      }
+    } else if (e instanceof Bird) {
       if (player.vy > 40 && prevBottom <= e.y + 6) {
         player.vy = -580; player.superBounceT = 0.35; e.y += 8;  // springboard!
         toast("Woah — thermal lift!");
@@ -170,13 +213,15 @@ function handleCollisions(prevBottom, prevTop) {
         e.dieBonk();
         Sfx.play("pop", 0.8);
         if (Math.random() < 0.35) spawnDrop(e.x + e.w / 2, e.y);
-      } else if (player.hurt(e.x + e.w / 2)) { bgPulse = 1; Sfx.play("thud", 0.9); }
+      } else if (!truce && player.hurt(e.x + e.w / 2)) { bgPulse = 1; Sfx.play("thud", 0.9); }
     } else if (e.stompable && player.vy > 40 && prevBottom <= e.y + 6) {
       e.dieStomp();
       Sfx.play("pop", 0.8);
-      player.vy = input.jump ? -330 : -240;
+      // chipmunks are springy — stomp one to reach high bonus spots
+      if (e.bouncy) { player.vy = input.jump ? -500 : -420; player.superBounceT = 0.3; }
+      else player.vy = input.jump ? -330 : -240;
       if (Math.random() < 0.35) spawnDrop(e.x + e.w / 2, e.y);
-    } else if (player.hurt(e.x + e.w / 2)) { bgPulse = 1; Sfx.play("thud", 0.9); }
+    } else if (!truce && player.hurt(e.x + e.w / 2)) { bgPulse = 1; Sfx.play("thud", 0.9); }
   }
   // fruit trees: bonk from below to knock a snack loose
   for (const f of level.fruits) {
@@ -236,16 +281,53 @@ function updatePlay(dt) {
   }
 
   // vista tip + background reveal: climbing pans the forest away from the
-  // far mountains
+  // far mountains. The reveal keys off GROUNDED altitude so jumps don't
+  // bob the background.
   const vista = level.inVista(player.x + player.w / 2);
   if (vista && !vista.tipped) { vista.tipped = true; toast("Quite the view — resting here restores stamina"); }
-  const targetLift = Math.max(0, Math.min(60, (175 - player.y) * 0.8));
-  bgLift += (targetLift - bgLift) * Math.min(1, dt * 3);
+  if (player.onGround) groundedY = player.y;
+  const alt = level.lowTop - groundedY;
+  const targetLift = Math.max(0, Math.min(60, (alt - 130) * 0.3));
+  bgLift += (targetLift - bgLift) * Math.min(1, dt * 2);
+
+  // vertical camera: deadzone in the middle of the screen, smooth outside it
+  let ty = camY;
+  if (player.y < camY + 70) ty = player.y - 70;
+  else if (player.y + player.h > camY + VIEW_H - 96) ty = player.y + player.h - (VIEW_H - 96);
+  ty = Math.max(0, Math.min(level.worldH - VIEW_H, ty));
+  camY += (ty - camY) * Math.min(1, dt * 5);
+
+  // the bear: dark hours only, rare, one at a time
+  const prog = camX / (level.length - VIEW_W);
+  if ((prog < 0.07 || prog > 0.88) && bearsSpawned < 2 &&
+      !enemies.some((e) => e instanceof Bear) && Math.random() < dt * 0.06) {
+    const bx = camX + VIEW_W + 30;
+    enemies.push(new Bear(bx, level.groundTop(bx) - 14));
+    bearsSpawned++;
+    toast("…something big moves in the dark…");
+  }
+
+  // trail photos: preload nearby, collect on touch
+  for (const ph of level.photoSpots) {
+    if (ph.taken) continue;
+    if (!ph.img && ph.x - player.x < 700 && ph.x - player.x > -300) {
+      ph.img = new Image();
+      ph.img.src = "../media/thumb/" + ph.file;
+    }
+    const my = level.groundTop(ph.x) - 24;
+    if (overlap(player, { x: ph.x - 7, y: my - 8, w: 14, h: 18 })) {
+      ph.taken = true;
+      player.photosSeen = (player.photosSeen || 0) + 1;
+      photoShow = { spot: ph, t: 4 };
+    }
+  }
+  if (photoShow) { photoShow.t -= dt; if (photoShow.t <= 0) photoShow = null; }
 
   spawnPlaced();
   spawnFromBeats(beats, sec.intensity);
   for (const e of enemies) e.update(dt, level, player, beats, sec.intensity);
-  enemies = enemies.filter(e => !e.remove && e.x > camX - 250 && e.x < camX + VIEW_W + 600);
+  enemies = enemies.filter(e => !e.remove && e.x > camX - 250 && e.x < camX + VIEW_W + 600 &&
+    e.y > -250 && e.y < level.worldH + 250);
   handleCollisions(prevBottom, prevTop);
 
   // knocked-loose snacks fall until they land, then become pickups
@@ -362,32 +444,35 @@ function renderScene(g, dt) {
   }
 
   // far mountains-with-lakes, then the thick forest that hides their feet;
-  // climbing high pans them apart (bgLift) and the lakes appear
-  drawStrip(g, Backdrops.far, 0.12, 92, 0.25);
-  drawStrip(g, Backdrops.mid, 0.35, 136, 1.5);
+  // climbing high pans them apart (bgLift) and the lakes appear. Mountains
+  // barely move — they're far away.
+  drawStrip(g, Backdrops.far, 0.03, 92, 0.12);
+  drawStrip(g, Backdrops.mid, 0.2, 136, 1.4);
 
   g.save();
   g.translate(-Math.round(camX), -Math.round(camY));
 
   // terrain columns (sheet tiles when styled art is loaded)
+  const viewBot = camY + VIEW_H;
   const c0 = Math.floor(camX / TILE), c1 = Math.min(level.cols - 1, c0 + VIEW_W / TILE + 1);
   for (let c = c0; c <= c1; c++) {
     const x = c * TILE, top = level.top[c], biome = level.biomeOf(c);
+    if (top > viewBot) continue;
     const inLakebed = level.waterSurfaceAt(x + 8) !== null;
     const tile = inLakebed ? Sprites.tileSand
       : biome === "quartzite" ? Sprites.tileQuartzite : Sprites.tileForest;
     if (tile) {
       g.drawImage(tile, x, top);
       const below = (biome === "quartzite" || inLakebed) ? tile : (Sprites.tileDirt || tile);
-      for (let y = top + TILE; y < VIEW_H; y += TILE) g.drawImage(below, x, y);
+      for (let y = top + TILE; y < viewBot; y += TILE) g.drawImage(below, x, y);
     } else if (biome === "quartzite") {
-      g.fillStyle = "#f4f1ea"; g.fillRect(x, top, TILE, VIEW_H - top);
+      g.fillStyle = "#f4f1ea"; g.fillRect(x, top, TILE, viewBot - top);
       g.fillStyle = "#d8d3c6"; g.fillRect(x, top + 6, TILE, 2);
     } else if (inLakebed) {
-      g.fillStyle = "#cbb27f"; g.fillRect(x, top, TILE, VIEW_H - top); // lakebed sand
+      g.fillStyle = "#cbb27f"; g.fillRect(x, top, TILE, viewBot - top); // lakebed sand
     } else {
       g.fillStyle = "#5d8a44"; g.fillRect(x, top, TILE, 5);
-      g.fillStyle = "#6d4c33"; g.fillRect(x, top + 5, TILE, VIEW_H - top - 5);
+      g.fillStyle = "#6d4c33"; g.fillRect(x, top + 5, TILE, viewBot - top - 5);
       g.fillStyle = "#573b26"; g.fillRect(x, top + 5, TILE, 2);
     }
   }
@@ -433,10 +518,29 @@ function renderScene(g, dt) {
   }
   for (const d of drops) g.drawImage(Sprites.snack, Math.round(d.x - 4), Math.round(d.y - 4));
 
-  // enemies
+  // photo spots: little polaroids waiting on the trail
+  for (const ph of level.photoSpots) {
+    if (ph.taken || ph.x < camX - 30 || ph.x > camX + VIEW_W + 30) continue;
+    const py = level.groundTop(ph.x) - 24 + bob;
+    g.fillStyle = "#f4f1ea"; g.fillRect(ph.x - 6, py - 8, 12, 13);
+    g.fillStyle = "#8a92a0"; g.fillRect(ph.x - 4, py - 6, 8, 7);
+    g.fillStyle = "#2b2d33"; g.fillRect(ph.x - 1, py - 4, 3, 2);
+  }
+
+  // enemies (bonked ones spin belly-up as they fall)
   for (const e of enemies) {
     const spr = e.sprite();
-    g.drawImage(spr, Math.round(e.x + e.w / 2 - spr.width / 2), Math.round(e.y + e.h - spr.height));
+    const dx = Math.round(e.x + e.w / 2 - spr.width / 2);
+    const dy = Math.round(e.y + e.h - spr.height);
+    if (e.dead && e.spin) {
+      g.save();
+      g.translate(dx + spr.width / 2, dy + spr.height / 2);
+      g.scale(1, -1);
+      g.drawImage(spr, -spr.width / 2, -spr.height / 2);
+      g.restore();
+    } else {
+      g.drawImage(spr, dx, dy);
+    }
   }
 
   // player (flash while invulnerable)
@@ -510,12 +614,34 @@ function renderHUD(g) {
   if (player.trudge) { g.fillStyle = "#e74c3c"; g.font = "8px monospace"; g.fillText("EXHAUSTED — find a vista, snack or swim!", 8, 30); }
   else if (player.resting) { g.fillStyle = "#b8e6a0"; g.font = "8px monospace"; g.fillText("resting…", 8, 30); }
 
-  // km + snacks
+  // km + time of day + snacks
+  const prog = Math.max(0, Math.min(1, camX / (level.length - VIEW_W)));
+  const mins = Math.round(350 + prog * 880); // 05:50 sunrise → 20:30 sunset
   g.font = "9px monospace"; g.fillStyle = "#fff";
   g.textAlign = "right";
   g.fillText(`${level.kmAt(player.x).toFixed(1)} / ${level.km} km`, VIEW_W - 8, 16);
-  g.fillText(`🥜 ${player.snacks}  ★ ${player.stars}`, VIEW_W - 8, 28);
+  g.fillText(`${Math.floor(mins / 60)}:${String(mins % 60).padStart(2, "0")}`, VIEW_W - 8, 28);
+  g.fillText(`🥜 ${player.snacks}  ★ ${player.stars}  📷 ${player.photosSeen || 0}`, VIEW_W - 8, 40);
   g.textAlign = "left";
+
+  // collected trail photo pops up as a polaroid
+  if (photoShow && photoShow.spot.img && photoShow.spot.img.complete && photoShow.spot.img.naturalWidth) {
+    const img = photoShow.spot.img;
+    const a = Math.max(0, Math.min(1, photoShow.t * 1.5, (4 - photoShow.t) * 3));
+    const k = Math.min(190 / img.naturalWidth, 115 / img.naturalHeight);
+    const w = img.naturalWidth * k, h = img.naturalHeight * k;
+    const cx = VIEW_W / 2, cy = 64;
+    g.globalAlpha = a;
+    g.fillStyle = "#f4f1ea";
+    g.fillRect(cx - w / 2 - 5, cy - 5, w + 10, h + 22);
+    ctx2d.imageSmoothingEnabled = true;
+    g.drawImage(img, cx - w / 2, cy, w, h);
+    ctx2d.imageSmoothingEnabled = false;
+    g.fillStyle = "#2b2d33"; g.font = "8px monospace"; g.textAlign = "center";
+    g.fillText(`km ${photoShow.spot.km.toFixed(1)}`, cx, cy + h + 11);
+    g.textAlign = "left";
+    g.globalAlpha = 1;
+  }
 
   // song toast
   if (toastT > 0) {
@@ -584,7 +710,7 @@ function renderNight(g) {
   const nightCfg = (dayCfg && dayCfg.night) || {};
   g.fillText(nightCfg.caption || "Night falls.", VIEW_W / 2, 80);
   g.font = "9px monospace"; g.fillStyle = "#e9c46a";
-  g.fillText(`${level.km} km hiked · ${player.snacks} snacks · ${player.stars} vista${player.stars === 1 ? "" : "s"}`, VIEW_W / 2, 100);
+  g.fillText(`${level.km} km hiked · ${player.snacks} snacks · ${player.stars} star${player.stars === 1 ? "" : "s"} · ${player.photosSeen || 0} photos`, VIEW_W / 2, 100);
   g.fillText(`day took ${Math.floor(elapsed / 60)}:${String(Math.floor(elapsed % 60)).padStart(2, "0")}`, VIEW_W / 2, 114);
   if (nightCfg.bear) { g.fillStyle = "#8a92a0"; g.fillText("...something large shuffles past the tent...", VIEW_W / 2, 136); }
   // slot for the pixel-art night GIF: nightCfg.gif → shown here when added

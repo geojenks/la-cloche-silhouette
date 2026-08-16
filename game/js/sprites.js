@@ -310,6 +310,76 @@ const FRUIT = [
   "........",
 ];
 
+// --- death poses ----------------------------------------------------------
+const FROG_DEAD = [
+  "..........",
+  "..........",
+  "..........",
+  "..........",
+  "f.k....k.f",
+  "ffffffffff",
+  "fFFFFFFFFf",
+  "ff.ffff.ff",
+];
+const SNAKE_DEAD = [
+  "......................",
+  "........nnnnnn........",
+  ".......nn....nn..kk...",
+  ".......n..nn..n.k..k..",
+  ".......nn.nn.nn..kk...",
+  "........n....nn.......",
+  ".........nnnnn........",
+  "......................",
+];
+const BIRD_DEAD = [
+  "................",
+  "....d......d....",
+  ".....d....d.....",
+  "..dddDDDDDDddd..",
+  ".ddddDDDDDDdddd.",
+  "....DDDDDDDDkp..",
+  ".....DDDDDD..p..",
+  "......ddddd.....",
+  "................",
+  "................",
+];
+
+// --- bear (26x15), two lumber frames — night visitor ----------------------
+const BEAR_A = [
+  "..........................",
+  "....ooo...................",
+  "...ooooo..................",
+  "..ooooooooooooooooooo.....",
+  ".oOooooooooooooooooooo....",
+  ".ookoooooooooooooooooo....",
+  ".oooooooooooooooooooooo...",
+  ".OoooooooooooooooooooOo...",
+  ".OooooooooooooooooooooO...",
+  "..oooooooooooooooooooo....",
+  "..OOo..oOO....OOo..oOO....",
+  "..OO....OO....OO....OO....",
+  "..........................",
+  "..........................",
+  "..........................",
+];
+const BEAR_B = [
+  "..........................",
+  "....ooo...................",
+  "...ooooo..................",
+  "..ooooooooooooooooooo.....",
+  ".oOooooooooooooooooooo....",
+  ".ookoooooooooooooooooo....",
+  ".oooooooooooooooooooooo...",
+  ".OoooooooooooooooooooOo...",
+  ".OooooooooooooooooooooO...",
+  "..oooooooooooooooooooo....",
+  "...oOO..OOo....oOO..OOo...",
+  "...OO....OO....OO....OO...",
+  "..........................",
+  "..........................",
+  "..........................",
+];
+
 const Sprites = {};
 
 // Sheet-based art, with music-hype variants (hype = the song section's
@@ -359,6 +429,9 @@ function sliceSheet(mf, img, partial) {
   if (S.bird) S.birdL = S.bird.map(flip);
   put("snack", by.snack); put("star", by.star); put("matchbox", by.matchbox);
   put("fruit", by.fruit);
+  put("frogDead", by.frog_dead); put("snakeDead", by.snake_dead); put("birdDead", by.bird_dead);
+  put("bear", [by.bear_a, by.bear_b]);
+  if (S.bear) S.bearL = S.bear.map(flip);
   put("sign", by.sign); put("cairn", by.cairn); put("tent", by.tent);
   put("treeSmall", by.tree_small); put("treeLarge", by.tree_large);
   put("boulder", by.boulder); put("reed", by.reed); put("flower", by.flower);
@@ -417,4 +490,9 @@ function buildAtlas() {
   Sprites.cairn = makeSprite(CAIRN);
   Sprites.matchbox = makeSprite(MATCHBOX);
   Sprites.fruit = makeSprite(FRUIT);
+  Sprites.frogDead = makeSprite(FROG_DEAD);
+  Sprites.snakeDead = makeSprite(SNAKE_DEAD);
+  Sprites.birdDead = makeSprite(BIRD_DEAD);
+  Sprites.bear = [makeSprite(BEAR_A), makeSprite(BEAR_B)];
+  Sprites.bearL = Sprites.bear.map(flip);
 }

@@ -23,12 +23,46 @@ function mulberry32(seed) {
 }
 
 class Level {
-  constructor(cfg, songDuration) {
+  // profile: [[dist_m, elev_m], ...] for this day's slice of the real trail
+  constructor(cfg, songDuration, profile) {
     this.cfg = cfg;
     this.km = cfg.km;
     this.length = Math.floor(MAX_RUN * songDuration * ACE_PACE);
     this.cols = Math.ceil(this.length / TILE);
     const rnd = mulberry32(cfg.seed || 1);
+
+    // --- base curve: the actual topography of the day's walk -------------
+    // (falls back to a flat line if no profile is supplied)
+    this.profileAmp = 380;         // px spanning the day's min..max elevation
+    const TOP_BAND = 130;          // world y of the highest ground
+    this.base = new Float64Array(this.cols);
+    if (profile && profile.length > 2) {
+      const d0 = profile[0][0], d1 = profile[profile.length - 1][0];
+      const elevs = profile.map((p) => p[1]);
+      const eMin = Math.min(...elevs), eMax = Math.max(...elevs) || eMin + 1;
+      let pi = 0;
+      for (let c = 0; c < this.cols; c++) {
+        const dist = d0 + (c / (this.cols - 1)) * (d1 - d0);
+        while (pi < profile.length - 2 && profile[pi + 1][0] < dist) pi++;
+        const [da, ea] = profile[pi], [db, eb] = profile[pi + 1];
+        const t = (dist - da) / ((db - da) || 1);
+        const e = ea + (eb - ea) * Math.max(0, Math.min(1, t));
+        this.base[c] = TOP_BAND + (1 - (e - eMin) / (eMax - eMin)) * this.profileAmp;
+      }
+      // light smoothing so column steps come from the detail pass, not noise
+      const sm = new Float64Array(this.cols);
+      for (let c = 0; c < this.cols; c++) {
+        let s = 0, n = 0;
+        for (let k = -4; k <= 4; k++) {
+          const i = c + k;
+          if (i >= 0 && i < this.cols) { s += this.base[i]; n++; }
+        }
+        sm[c] = s / n;
+      }
+      this.base = sm;
+    } else {
+      this.base.fill(TOP_BAND + this.profileAmp * 0.7);
+    }
 
     // --- biome bands: forest → quartzite → lake shore → quartzite → forest
     const lakeFrac = (cfg.lakes && cfg.lakes[0] && cfg.lakes[0].at) || 0.45;
@@ -42,33 +76,29 @@ class Level {
       return f < 0.4 ? "forest" : "quartzite";
     };
 
-    // --- heightfield random walk ------------------------------------------
+    // --- heightfield: base curve + stepped local detail for platforming --
+    // ("large local variation around the true profile" — LOCAL_AMP sets it)
+    const LOCAL_AMP = 48;
     this.top = new Float64Array(this.cols);
-    let h = 200;
+    let dh = 0;
     for (let c = 0; c < this.cols; c++) {
       const biome = this.biomeOf(c);
-      // quartzite ridges sit higher than forest floor; reflect steps that
-      // would leave each biome's band so the walk keeps wandering instead
-      // of pinning at a clamp
-      const lo = biome === "quartzite" ? 140 : 168;
-      const hi = biome === "quartzite" ? 200 : 216;
       if (c > 4 && c < this.cols - 40 && biome !== "lake" && rnd() < 0.18) {
         const amp = biome === "quartzite" ? 32 : 16;
         let step = (rnd() < 0.5 ? -1 : 1) * (rnd() < 0.3 ? amp : 16);
-        if (h + step > hi || h + step < lo) step = -step;
-        h += step;
+        if (dh + step > LOCAL_AMP || dh + step < -LOCAL_AMP) step = -step;
+        dh += step;
       }
-      h = Math.max(140, Math.min(216, h));
-      this.top[c] = h;
+      this.top[c] = Math.round(this.base[c] + dh);
     }
     // flatten start & camp
-    for (let c = 0; c < 8; c++) this.top[c] = 200;
+    for (let c = 0; c < 8; c++) this.top[c] = this.top[8];
     for (let c = this.cols - 30; c < this.cols; c++) this.top[c] = this.top[this.cols - 31];
 
     // --- lake basin --------------------------------------------------------
-    const shoreY = Math.min(184, this.top[this.lakeCol - 9] || 184);
+    const shoreY = Math.round(this.top[this.lakeCol - 9] || this.base[this.lakeCol]);
     for (let c = this.lakeCol - 8; c < this.lakeCol + lakeW + 8 && c < this.cols; c++) this.top[c] = shoreY;
-    const surface = shoreY + 14, floor = Math.min(WORLD_H - 8, surface + 74);
+    const surface = shoreY + 14, floor = surface + 74;
     for (let c = this.lakeCol; c < this.lakeCol + lakeW; c++) {
       const edge = Math.min(c - this.lakeCol, this.lakeCol + lakeW - 1 - c);
       this.top[c] = edge < 3 ? surface + 16 + edge * 20 : floor; // stepped walls
@@ -79,7 +109,7 @@ class Level {
     // energy) — darker water, treasure at the bottom
     const crevCol = this.lakeCol + Math.floor(lakeW * 0.62);
     const crevDepth = 46;
-    const crevBottom = Math.min(WORLD_H - 6, floor + crevDepth);
+    const crevBottom = floor + crevDepth;
     for (let c = crevCol; c < crevCol + 2; c++) this.top[c] = crevBottom;
     this.crevice = { x: crevCol * TILE, y: floor - 4, w: 2 * TILE, h: crevBottom - floor + 12 };
     this.water.push(this.crevice);
@@ -100,38 +130,45 @@ class Level {
       this.platforms.push({ x: c * TILE, y: this.top[c] - 52 - Math.floor(rnd() * 3) * 16, w: TILE * (3 + Math.floor(rnd() * 3)) });
     }
 
-    // --- guaranteed lookout plateaus: stepped climb, flat top, stepped
-    // descent — the designated rest spots (plus wherever the walk happens
-    // to run high)
+    // --- lookout plateaus at the REAL local maxima of the day's profile —
+    // the actual high points of the hike are where you can rest
     this.lookouts = [];
-    for (const f of (cfg.vistaAt || [0.3, 0.65, 0.85])) {
-      let c0 = Math.floor(this.cols * f);
-      if (c0 > this.lakeCol - 24 && c0 < this.lakeCol + lakeW + 24) c0 = this.lakeCol + lakeW + 28;
-      const w = 6, steps = 3;
-      const base = this.top[c0 - steps - 1];
-      const topY = Math.max(132, base - 48);
+    const WIN = 80;
+    const peaks = [];
+    for (let c = Math.floor(this.cols * 0.08); c < this.cols - 60; c++) {
+      if (c > this.lakeCol - 28 && c < this.lakeCol + lakeW + 28) continue;
+      let isPeak = true;
+      for (let k = -WIN; k <= WIN && isPeak; k += 4) {
+        const i = Math.max(0, Math.min(this.cols - 1, c + k));
+        if (this.base[i] < this.base[c] - 0.01) isPeak = false;
+      }
+      if (isPeak) peaks.push(c);
+    }
+    peaks.sort((a, b) => this.base[a] - this.base[b]); // highest (smallest y) first
+    const minGap = Math.floor(this.cols * 0.12);
+    for (const pc of peaks) {
+      if (this.lookouts.length >= 4) break;
+      if (this.lookouts.some((l) => Math.abs(l.col - pc) < minGap)) continue;
+      const w = 6, steps = 3, c0 = pc - Math.floor(w / 2);
+      const baseL = this.top[c0 - steps - 1], baseR = this.top[c0 + w + steps];
+      const topY = Math.round(Math.min(this.base[pc] - 10, baseL - 16, baseR - 16));
       for (let i = 1; i <= steps; i++) {
-        const h = Math.round(base + (topY - base) * i / steps);
-        this.top[c0 - steps + i - 1] = h;                       // ascent
-        this.top[c0 + w + steps - i] = h;                       // descent
+        this.top[c0 - steps + i - 1] = Math.round(baseL + (topY - baseL) * i / steps);
+        this.top[c0 + w + steps - i] = Math.round(baseR + (topY - baseR) * i / steps);
       }
       for (let c = c0; c < c0 + w; c++) this.top[c] = topY;
-      this.lookouts.push({ x: (c0 + w / 2) * TILE, y: topY });
+      this.lookouts.push({ x: (c0 + w / 2) * TILE, y: topY, col: pc });
     }
 
-    // --- vista spots: sustained high ground where resting works ----------
-    this.vistas = [];
-    let v0 = -1;
-    for (let c = 0; c <= this.cols; c++) {
-      const high = c < this.cols && this.top[c] <= 150;
-      if (high && v0 < 0) v0 = c;
-      if (!high && v0 >= 0) {
-        if (c - v0 >= 4) this.vistas.push({ x0: v0 * TILE - 8, x1: c * TILE + 8, tipped: false });
-        v0 = -1;
-      }
-    }
-    // the bird-bounce secret is always a vista
+    // --- vista spots = the lookouts + the bird-bounce secret --------------
+    this.vistas = this.lookouts.map((l) => ({
+      x0: l.x - (3 + 4) * TILE, x1: l.x + (3 + 4) * TILE, tipped: false,
+    }));
     this.vistas.push({ x0: this.secret.x - 8, x1: this.secret.x + this.secret.w + 8, tipped: false });
+
+    // world extends below the deepest feature; camY is clamped to this
+    this.worldH = Math.ceil(Math.max(...this.top, crevBottom) + 80);
+    this.lowTop = Math.max(...this.top);
 
     // --- checkpoints (trailhead sign, lakeshore, cairn, tent) -------------
     this.checkpoints = [
