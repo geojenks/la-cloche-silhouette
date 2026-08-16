@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>backdrop template renderer</title>
+<style>body{background:#222;margin:0}canvas{image-rendering:pixelated}</style>
+</head>
+<body>
+<!-- Renders the backdrop-strip template for GPT stylizing, from the game's
+     procedural placeholder painters. Serve the repo root and open
+     /tools/backdrop-template.html, or use tools/render_backdrops.js.
+     Normalize GPT's result with tools/normalize_backdrop.py. -->
+<canvas id="sheet"></canvas>
+<script src="../game/js/level.js"></script><!-- mulberry32 -->
+<script src="../game/js/backdrops.js"></script>
+<script>
+"use strict";
+const SCALE = 1.5;
+async function main() {
+  const mf = await (await fetch("../game/data/backdrops.json")).json();
+  const painters = { far: Backdrops._far.bind(Backdrops), mid: Backdrops._mid.bind(Backdrops) };
+  const W = Math.max(...mf.strips.map(s => s.w)) + mf.margin * 2;
+  const H = mf.header + mf.strips.reduce((a, s) => a + s.h + mf.gap, 0) + mf.margin;
+  const c = document.getElementById("sheet");
+  c.width = W * SCALE; c.height = H * SCALE;
+  const g = c.getContext("2d");
+  g.imageSmoothingEnabled = false;
+  g.scale(SCALE, SCALE);
+  g.fillStyle = mf.background; g.fillRect(0, 0, W, H);
+  g.fillStyle = "#000"; g.font = "9px monospace";
+  g.fillText("LA CLOCHE BACKDROPS — restyle each strip; keep sizes & positions; strips tile", mf.margin, 10);
+  g.fillText("horizontally (match left/right edges!); sky above silhouettes stays pure magenta.", mf.margin, 21);
+  let y = mf.header;
+  for (const s of mf.strips) {
+    g.drawImage(painters[s.name](), mf.margin, y);
+    g.fillStyle = "#000"; g.font = "8px monospace";
+    g.fillText(`${s.name} — ${s.what}`, mf.margin, y + s.h + 9);
+    y += s.h + mf.gap;
+  }
+  document.title = "backdrop template ready";
+}
+main();
+</script>
+</body>
+</html>

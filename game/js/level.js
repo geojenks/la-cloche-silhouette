@@ -100,6 +100,39 @@ class Level {
       this.platforms.push({ x: c * TILE, y: this.top[c] - 52 - Math.floor(rnd() * 3) * 16, w: TILE * (3 + Math.floor(rnd() * 3)) });
     }
 
+    // --- guaranteed lookout plateaus: stepped climb, flat top, stepped
+    // descent — the designated rest spots (plus wherever the walk happens
+    // to run high)
+    this.lookouts = [];
+    for (const f of (cfg.vistaAt || [0.3, 0.65, 0.85])) {
+      let c0 = Math.floor(this.cols * f);
+      if (c0 > this.lakeCol - 24 && c0 < this.lakeCol + lakeW + 24) c0 = this.lakeCol + lakeW + 28;
+      const w = 6, steps = 3;
+      const base = this.top[c0 - steps - 1];
+      const topY = Math.max(132, base - 48);
+      for (let i = 1; i <= steps; i++) {
+        const h = Math.round(base + (topY - base) * i / steps);
+        this.top[c0 - steps + i - 1] = h;                       // ascent
+        this.top[c0 + w + steps - i] = h;                       // descent
+      }
+      for (let c = c0; c < c0 + w; c++) this.top[c] = topY;
+      this.lookouts.push({ x: (c0 + w / 2) * TILE, y: topY });
+    }
+
+    // --- vista spots: sustained high ground where resting works ----------
+    this.vistas = [];
+    let v0 = -1;
+    for (let c = 0; c <= this.cols; c++) {
+      const high = c < this.cols && this.top[c] <= 150;
+      if (high && v0 < 0) v0 = c;
+      if (!high && v0 >= 0) {
+        if (c - v0 >= 4) this.vistas.push({ x0: v0 * TILE - 8, x1: c * TILE + 8, tipped: false });
+        v0 = -1;
+      }
+    }
+    // the bird-bounce secret is always a vista
+    this.vistas.push({ x0: this.secret.x - 8, x1: this.secret.x + this.secret.w + 8, tipped: false });
+
     // --- checkpoints (trailhead sign, lakeshore, cairn, tent) -------------
     this.checkpoints = [
       { x: 40, label: "Trailhead" },
@@ -109,9 +142,12 @@ class Level {
     this.tentX = (this.cols - 16) * TILE;
 
     // --- pickups -----------------------------------------------------------
-    // sparse on the ground — most snacks come from fruit trees and
-    // enemy drops now
+    // a snack waits at every lookout
+    // (placed before the sparse ground scatter)
     this.pickups = [];
+    for (const lk of this.lookouts)
+      this.pickups.push({ type: "snack", x: lk.x, y: lk.y - 14, taken: false });
+    // sparse on the ground — most snacks come from fruit trees and drops
     for (let c = 24; c < this.cols - 40; c += 80 + Math.floor(rnd() * 60)) {
       if (this.biomeOf(c) === "lake") continue;
       this.pickups.push({ type: "snack", x: c * TILE, y: this.top[c] - 14, taken: false });
@@ -191,6 +227,11 @@ class Level {
 
   waterSurfaceAt(x) {
     for (const w of this.water) if (x >= w.x && x <= w.x + w.w) return w.y;
+    return null;
+  }
+
+  inVista(x) {
+    for (const v of this.vistas) if (x >= v.x0 && x <= v.x1) return v;
     return null;
   }
 

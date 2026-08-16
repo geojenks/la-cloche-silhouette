@@ -97,11 +97,16 @@ class Player {
     moveX(this, this.vx * dt, level);
     moveY(this, dt, level, { swim: this.swimming });
 
-    // stamina economy — resting alone only gets you to a third of full;
-    // proper recovery needs snacks or a swim
+    // stamina economy — resting only works at vista spots (high ground
+    // with the big view) and tops out at 75; full recovery needs snacks
+    // or a swim
+    this.resting = false;
     if (this.swimming) this.stamina = Math.min(100, this.stamina + 18 * dt);
-    else if (this.onGround && !input.left && !input.right && this.stamina < 33)
-      this.stamina = Math.min(33, this.stamina + 3 * dt);
+    else if (this.onGround && !input.left && !input.right &&
+             level.inVista(this.x + this.w / 2) && this.stamina < 75) {
+      this.stamina = Math.min(75, this.stamina + 6 * dt);
+      this.resting = true;
+    }
     else if (Math.abs(this.vx) > 20) this.stamina = Math.max(0, this.stamina - 1.1 * dt);
     if (this.stamina <= 0) this.trudge = true;
     if (this.trudge && this.stamina > 25) this.trudge = false;
@@ -172,6 +177,7 @@ class Frog extends Enemy {
     // pursuer you can time rather than a relentless one
     if (this.onGround && beats.some(b => b.type === "downbeat")) {
       this.vy = -240; this.vx = 65 * (Math.sign(player.x - this.x) || -1);
+      Sfx.play("boing", 0.7 * Sfx.vol(player.x - this.x));
     }
     if (this.onGround) this.vx *= 0.6;
     moveX(this, this.vx * dt, level);
@@ -194,6 +200,7 @@ class Snake extends Enemy {
       if (Math.abs(player.x - this.x) < 90 && Math.abs(player.y - this.y) < 60) {
         this.state = "dash";
         this.dir = Math.sign(player.x - this.x) || -1;
+        Sfx.play("hiss", Sfx.vol(player.x - this.x));
       }
       return moveY(this, dt, level, { noPlatforms: true });
     }
@@ -229,7 +236,10 @@ class Bird extends Enemy {
     // (more often the harder the music is going)
     if (this.diving <= 0 && beats.some(b => b.type === "downbeat") &&
         Math.abs(this.x - player.x) < 100 && player.y > this.y &&
-        Math.random() < 0.15 + 0.15 * intensity) this.diving = 0.7;
+        Math.random() < 0.15 + 0.15 * intensity) {
+      this.diving = 0.7;
+      Sfx.play("screech", 0.8 * Sfx.vol(player.x - this.x));
+    }
     if (this.diving > 0) {
       this.diving -= dt;
       this.y += (player.y - this.y) * 1.8 * dt;

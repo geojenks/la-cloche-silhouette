@@ -69,6 +69,22 @@ The base sheet is required for any of this (`game/data/sprites/base.png`);
 variants are optional and can be added one hype level at a time. Keep the
 raw GPT sheets in `game/data/sprites/src/` for re-rolls.
 
+## Backdrops (parallax strips)
+
+The background is two horizontally-tiling strips, not grid sprites: `far`
+(La Cloche mountains with lakes at their feet) and `mid` (dense forest
+that hides the far layer's lower half until the player climbs high — at
+vista spots the layers pan apart and the lakes appear). Same GPT loop,
+separate template:
+
+1. `node tools/render_backdrops.js` → `backdrop-template.png` (renders the
+   procedural placeholders + labels)
+2. GPT restyles it — strips must tile horizontally (left/right edges must
+   match) and the sky above each silhouette stays pure magenta
+3. `python3 tools/normalize_backdrop.py styled-backdrops.png` →
+   `game/data/sprites/backdrops/{far,mid}.png`, auto-loaded by the game
+   (add `--smooth` for a painterly rather than pixel look)
+
 ## More sheets as the game grows
 
 This sheet is the Day-1 set, not the whole game. Days 2-6 will add cells

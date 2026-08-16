@@ -23,7 +23,7 @@ function fitCanvas() {
 
 const music = new MusicManager();
 let level = null, player = null, enemies = [], drops = [], state = "boot";
-let camX = 0, camY = 0, bgPulse = 0, elapsed = 0, fade = 0;
+let camX = 0, camY = 0, bgPulse = 0, elapsed = 0, fade = 0, bgLift = 0;
 let checkpoint = null, spawnAlt = 0, toastT = 0, toastText = "";
 let dayCfg = null, nightAnim = 0;
 // sprite set follows the music's hype = section intensity (0 calm,
@@ -80,6 +80,7 @@ function toast(msg) { toastText = msg; toastT = 2.5; }
 async function boot() {
   buildAtlas();
   await loadSpriteSheets(); // styled art (+mood variants) overrides placeholders
+  await Backdrops.init();
   dayCfg = await (await fetch("data/levels/day1.json")).json();
   await music.load(dayCfg.playlist);
   const first = music.songs[dayCfg.playlist[0]];
@@ -167,13 +168,15 @@ function handleCollisions(prevBottom, prevTop) {
         toast("Woah — thermal lift!");
       } else if (player.vy < -20 && prevTop >= e.y + e.h - 6) {
         e.dieBonk();
+        Sfx.play("pop", 0.8);
         if (Math.random() < 0.35) spawnDrop(e.x + e.w / 2, e.y);
-      } else if (player.hurt(e.x + e.w / 2)) bgPulse = 1;
+      } else if (player.hurt(e.x + e.w / 2)) { bgPulse = 1; Sfx.play("thud", 0.9); }
     } else if (e.stompable && player.vy > 40 && prevBottom <= e.y + 6) {
       e.dieStomp();
+      Sfx.play("pop", 0.8);
       player.vy = input.jump ? -330 : -240;
       if (Math.random() < 0.35) spawnDrop(e.x + e.w / 2, e.y);
-    } else if (player.hurt(e.x + e.w / 2)) bgPulse = 1;
+    } else if (player.hurt(e.x + e.w / 2)) { bgPulse = 1; Sfx.play("thud", 0.9); }
   }
   // fruit trees: bonk from below to knock a snack loose
   for (const f of level.fruits) {
@@ -232,6 +235,13 @@ function updatePlay(dt) {
     if (player.x >= c.x && (!checkpoint || c.x > checkpoint.x)) { if (checkpoint !== c) { checkpoint = c; toast(`Checkpoint — ${c.label}`); } }
   }
 
+  // vista tip + background reveal: climbing pans the forest away from the
+  // far mountains
+  const vista = level.inVista(player.x + player.w / 2);
+  if (vista && !vista.tipped) { vista.tipped = true; toast("Quite the view — resting here restores stamina"); }
+  const targetLift = Math.max(0, Math.min(60, (175 - player.y) * 0.8));
+  bgLift += (targetLift - bgLift) * Math.min(1, dt * 3);
+
   spawnPlaced();
   spawnFromBeats(beats, sec.intensity);
   for (const e of enemies) e.update(dt, level, player, beats, sec.intensity);
@@ -246,7 +256,8 @@ function updatePlay(dt) {
   }
   drops = drops.filter(d => !d.landed);
 
-  camX = Math.max(0, Math.min(level.length - VIEW_W, player.x - VIEW_W * 0.38 + player.vx * 0.25));
+  // player fixed at screen centre — no lookahead drag
+  camX = Math.max(0, Math.min(level.length - VIEW_W, player.x + player.w / 2 - VIEW_W / 2));
 
   if (player.x > level.tentX + 20) { state = "night"; nightAnim = 0; music.underwater(false); }
 }
@@ -257,10 +268,34 @@ function lerpColor(c1, c2, t) {
   return `rgb(${Math.round(lerp(c1[0], c2[0], t))},${Math.round(lerp(c1[1], c2[1], t))},${Math.round(lerp(c1[2], c2[2], t))})`;
 }
 
-const SKY = [[135, 206, 235], [150, 210, 235], [244, 172, 96]]; // morning, midday, dusk
-function skyColors(p) {
-  const a = p < 0.5 ? lerpColor(SKY[0], SKY[1], p * 2) : lerpColor(SKY[1], SKY[2], (p - 0.5) * 2);
-  return a;
+// day cycle keyed to level progress: start the hike pre-dawn, arrive at
+// camp as the sun sets
+const SKY_STOPS = [
+  [0.00, [14, 20, 42]],    // pre-dawn, stars out
+  [0.05, [70, 48, 74]],    // first light
+  [0.09, [214, 122, 62]],  // sunrise burnt orange
+  [0.20, [135, 206, 235]], // morning blue
+  [0.72, [152, 211, 235]], // afternoon
+  [0.88, [235, 142, 72]],  // sunset
+  [1.00, [112, 56, 76]],   // dusk at camp
+];
+function skyRGB(p) {
+  for (let i = 1; i < SKY_STOPS.length; i++) {
+    if (p <= SKY_STOPS[i][0]) {
+      const [p0, c0] = SKY_STOPS[i - 1], [p1, c1] = SKY_STOPS[i];
+      const t = (p - p0) / (p1 - p0);
+      return c0.map((v, k) => lerp(v, c1[k], t));
+    }
+  }
+  return SKY_STOPS[SKY_STOPS.length - 1][1];
+}
+function rgb(c) { return `rgb(${c.map(Math.round).join(",")})`; }
+
+function drawStrip(g, img, par, yBase, liftK) {
+  const y = Math.round(yBase + bgLift * liftK);
+  const w = img.width;
+  let x = -((camX * par) % w) - w;
+  for (; x < VIEW_W; x += w) g.drawImage(img, Math.round(x), y);
 }
 
 function render(dt) {
@@ -285,10 +320,12 @@ function renderScene(g, dt) {
   if (state === "night") return renderNight(g);
 
   const p = camX / (level.length - VIEW_W);
-  // sky with a beat pulse
+  // sky gradient for this time of day, with a beat pulse
+  const sky = skyRGB(p);
+  const horizon = sky.map((v) => lerp(v, 240, 0.45));
   const grd = g.createLinearGradient(0, 0, 0, VIEW_H);
-  grd.addColorStop(0, skyColors(p));
-  grd.addColorStop(1, "#e8ecda");
+  grd.addColorStop(0, rgb(sky));
+  grd.addColorStop(1, rgb(horizon));
   g.fillStyle = grd;
   g.fillRect(0, 0, VIEW_W, VIEW_H);
   if (bgPulse > 0) {
@@ -298,10 +335,25 @@ function renderScene(g, dt) {
     g.fillRect(0, 0, VIEW_W, VIEW_H);
   }
 
-  // sun sliding across the day
-  const sunX = 60 + p * 340, sunY = 50 + Math.sin(p * Math.PI) * -15;
-  if (Sprites.sun) g.drawImage(Sprites.sun, sunX - 12, sunY - 12);
-  else { g.fillStyle = "#fff7d6"; g.beginPath(); g.arc(sunX, sunY, 12, 0, 7); g.fill(); }
+  // stars fade with the dawn (and return at dusk)
+  const starA = Math.max(1 - p / 0.08, (p - 0.93) / 0.07);
+  if (starA > 0) {
+    for (let i = 0; i < 70; i++) {
+      const sx = (i * 137.5 + 20) % VIEW_W, sy = (i * 89.3) % 150;
+      g.fillStyle = `rgba(255,255,240,${starA * (0.35 + 0.4 * Math.abs(Math.sin(i * 3.7)))})`;
+      g.fillRect(sx, sy, 1.5, 1.5);
+    }
+  }
+
+  // the sun arcs from sunrise to sunset across the whole day
+  const sunX = 40 + p * (VIEW_W - 80);
+  const sunY = 158 - Math.sin(p * Math.PI) * 118;
+  const warmth = 1 - Math.sin(p * Math.PI);
+  if (Sprites.sun) g.drawImage(Sprites.sun, Math.round(sunX - 12), Math.round(sunY - 12));
+  else {
+    g.fillStyle = rgb([255, lerp(247, 150, warmth), lerp(214, 70, warmth)]);
+    g.beginPath(); g.arc(sunX, sunY, 12, 0, 7); g.fill();
+  }
   if (Sprites.cloud) {
     for (let i = 0; i < 3; i++) {
       const cx = ((i * 210 + 40 - camX * 0.08) % (VIEW_W + 60) + VIEW_W + 60) % (VIEW_W + 60) - 30;
@@ -309,24 +361,10 @@ function renderScene(g, dt) {
     }
   }
 
-  // white quartzite ridge (parallax far)
-  g.fillStyle = "#e9e7df";
-  g.beginPath(); g.moveTo(0, VIEW_H);
-  for (let i = 0; i <= VIEW_W; i += 8) {
-    const idx = Math.floor((i + camX * 0.15) / 32) % level.ridge.length;
-    g.lineTo(i, level.ridge[idx]);
-  }
-  g.lineTo(VIEW_W, VIEW_H); g.fill();
-
-  // hazy distant treeline (parallax mid) — muted so it can't be mistaken
-  // for walkable ground
-  g.fillStyle = "#7c9480";
-  g.beginPath(); g.moveTo(0, VIEW_H);
-  for (let i = 0; i <= VIEW_W; i += 4) {
-    const s = Math.sin((i + camX * 0.4) * 0.05) * 6 + Math.sin((i + camX * 0.4) * 0.13) * 4;
-    g.lineTo(i, 158 + s);
-  }
-  g.lineTo(VIEW_W, VIEW_H); g.fill();
+  // far mountains-with-lakes, then the thick forest that hides their feet;
+  // climbing high pans them apart (bgLift) and the lakes appear
+  drawStrip(g, Backdrops.far, 0.12, 92, 0.25);
+  drawStrip(g, Backdrops.mid, 0.35, 136, 1.5);
 
   g.save();
   g.translate(-Math.round(camX), -Math.round(camY));
@@ -378,6 +416,8 @@ function renderScene(g, dt) {
   g.drawImage(Sprites.sign, 24, level.groundTop(24) - Sprites.sign.height);
   for (const c of level.checkpoints) if (c.label === "Ridge cairn")
     g.drawImage(Sprites.cairn, c.x, level.groundTop(c.x) - Sprites.cairn.height);
+  for (const lk of level.lookouts)
+    g.drawImage(Sprites.cairn, Math.round(lk.x + 14), lk.y - Sprites.cairn.height);
   g.drawImage(Sprites.tent, level.tentX, level.groundTop(level.tentX) - Sprites.tent.height);
 
   // pickups (bob on the beat), fruit in the canopies, falling drops
@@ -467,7 +507,8 @@ function renderHUD(g) {
   g.fillStyle = s > 0.5 ? "#6ab04c" : s > 0.25 ? "#e9c46a" : "#e74c3c";
   g.fillRect(10, 10, 100 * s, 8);
   g.strokeStyle = "#fff"; g.lineWidth = 1; g.strokeRect(8.5, 8.5, 103, 11);
-  if (player.trudge) { g.fillStyle = "#e74c3c"; g.font = "8px monospace"; g.fillText("EXHAUSTED — rest, snack or swim!", 8, 30); }
+  if (player.trudge) { g.fillStyle = "#e74c3c"; g.font = "8px monospace"; g.fillText("EXHAUSTED — find a vista, snack or swim!", 8, 30); }
+  else if (player.resting) { g.fillStyle = "#b8e6a0"; g.font = "8px monospace"; g.fillText("resting…", 8, 30); }
 
   // km + snacks
   g.font = "9px monospace"; g.fillStyle = "#fff";

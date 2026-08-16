@@ -8,6 +8,56 @@
 // midpoint) is the midbeat, everything else is an upbeat.
 "use strict";
 
+// Tiny synthesized SFX — sparse by design: a global 120ms throttle per
+// sound, volume falls off with distance, and everything routes through the
+// music's filter chain so effects muffle underwater too.
+const Sfx = {
+  ctx: null, dest: null, last: {},
+  init(ctx, dest) { this.ctx = ctx; this.dest = dest; },
+  vol(dist) { return Math.max(0, 1 - Math.abs(dist) / 380); },
+  play(name, vol = 1) {
+    if (!this.ctx || vol <= 0.03) return;
+    const now = performance.now();
+    if (now - (this.last[name] || 0) < 120) return;
+    this.last[name] = now;
+    const t = this.ctx.currentTime;
+    const g = this.ctx.createGain();
+    g.connect(this.dest);
+    const env = (v, dur) => {
+      g.gain.setValueAtTime(v * vol, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    };
+    const osc = (type, f0, f1, dur) => {
+      const o = this.ctx.createOscillator();
+      o.type = type;
+      o.frequency.setValueAtTime(f0, t);
+      o.frequency.exponentialRampToValueAtTime(f1, t + dur);
+      o.start(t); o.stop(t + dur + 0.05);
+      return o;
+    };
+    if (name === "hiss") {          // snake ambush triggered
+      const n = this.ctx.createBufferSource();
+      const b = this.ctx.createBuffer(1, this.ctx.sampleRate * 0.3, this.ctx.sampleRate);
+      const d = b.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+      n.buffer = b;
+      const f = this.ctx.createBiquadFilter();
+      f.type = "highpass"; f.frequency.value = 3200;
+      n.connect(f).connect(g); env(0.22, 0.3); n.start(t);
+    } else if (name === "boing") {  // frog hop nearby
+      osc("sine", 340, 120, 0.16).connect(g); env(0.2, 0.18);
+    } else if (name === "screech") { // bird committing to a dive
+      const f = this.ctx.createBiquadFilter();
+      f.type = "bandpass"; f.frequency.value = 1800;
+      osc("sawtooth", 1500, 700, 0.25).connect(f).connect(g); env(0.12, 0.28);
+    } else if (name === "pop") {    // enemy defeated
+      osc("square", 220, 60, 0.08).connect(g); env(0.18, 0.09);
+    } else if (name === "thud") {   // player hurt
+      osc("sine", 100, 45, 0.12).connect(g); env(0.4, 0.13);
+    }
+  },
+};
+
 class MusicManager {
   constructor() {
     this.ctx = null;
@@ -53,6 +103,7 @@ class MusicManager {
     this.master = this.ctx.createGain();
     this.master.gain.value = 0.9;
     this.bass.connect(this.lp).connect(this.master).connect(this.ctx.destination);
+    Sfx.init(this.ctx, this.bass);
   }
 
   setPlaylist(ids) {

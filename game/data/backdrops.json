@@ -1,0 +1,11 @@
+{
+  "comment": "Layout contract for the backdrop template (tools/backdrop-template.html) and normalizer (tools/normalize_backdrop.py). Strips tile horizontally in-game; sky above each silhouette must stay magenta in styled sheets (keyed to transparency). Sizes are native pixels.",
+  "margin": 8,
+  "header": 26,
+  "gap": 14,
+  "background": "#ff00ff",
+  "strips": [
+    { "name": "far", "w": 960, "h": 170, "what": "La Cloche mountains, white quartzite ridges, lakes at their feet (lakes in the y 95-130 band — revealed when the player climbs)" },
+    { "name": "mid", "w": 960, "h": 140, "what": "dense conifer forest silhouette, solid below its treeline" }
+  ]
+}
