@@ -47,6 +47,19 @@
     { "name": "bear_b",         "cell": [6, 4], "w": 26, "h": 15, "atlas": "bear", "frame": 1 },
     { "name": "frog_dead",      "cell": [0, 5], "w": 10, "h": 8,  "atlas": "frogDead" },
     { "name": "snake_dead",     "cell": [1, 5], "w": 22, "h": 8,  "atlas": "snakeDead" },
-    { "name": "bird_dead",      "cell": [2, 5], "w": 16, "h": 10, "atlas": "birdDead" }
+    { "name": "bird_dead",      "cell": [2, 5], "w": 16, "h": 10, "atlas": "birdDead" },
+
+    { "name": "hiker_walk_c",   "cell": [3, 5], "w": 12, "h": 18, "atlas": "hiker", "frame": 2, "optional": true },
+    { "name": "hiker_walk_d",   "cell": [4, 5], "w": 12, "h": 18, "atlas": "hiker", "frame": 3, "optional": true },
+    { "name": "chipmunk_c",     "cell": [5, 5], "w": 12, "h": 8,  "atlas": "chip", "frame": 2, "optional": true },
+    { "name": "chipmunk_d",     "cell": [6, 5], "w": 12, "h": 8,  "atlas": "chip", "frame": 3, "optional": true },
+    { "name": "frog_c",         "cell": [0, 6], "w": 10, "h": 8,  "atlas": "frog", "frame": 2, "optional": true },
+    { "name": "frog_d",         "cell": [1, 6], "w": 10, "h": 8,  "atlas": "frog", "frame": 3, "optional": true },
+    { "name": "snake_c",        "cell": [2, 6], "w": 22, "h": 8,  "atlas": "snake", "frame": 2, "optional": true },
+    { "name": "snake_d",        "cell": [3, 6], "w": 22, "h": 8,  "atlas": "snake", "frame": 3, "optional": true },
+    { "name": "bird_c",         "cell": [4, 6], "w": 16, "h": 10, "atlas": "bird", "frame": 2, "optional": true },
+    { "name": "bird_d",         "cell": [5, 6], "w": 16, "h": 10, "atlas": "bird", "frame": 3, "optional": true },
+    { "name": "bear_c",         "cell": [0, 7], "w": 26, "h": 15, "atlas": "bear", "frame": 2, "optional": true },
+    { "name": "bear_d",         "cell": [1, 7], "w": 26, "h": 15, "atlas": "bear", "frame": 3, "optional": true }
   ]
 }

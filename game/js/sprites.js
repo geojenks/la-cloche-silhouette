@@ -402,7 +402,7 @@ function sliceSheet(mf, img, partial) {
     const g = c.getContext("2d");
     g.imageSmoothingEnabled = false;
     g.drawImage(img, cx, cy, s.w, s.h, 0, 0, s.w, s.h);
-    if (partial) { // skip cells the variant left empty
+    if (partial || s.optional) { // skip cells this sheet left empty
       const d = g.getImageData(0, 0, s.w, s.h).data;
       let solid = false;
       for (let i = 3; i < d.length; i += 4) if (d[i] > 10) { solid = true; break; }
@@ -415,22 +415,28 @@ function sliceSheet(mf, img, partial) {
   const put = (k, v) => {
     if (Array.isArray(v) ? v.every(Boolean) : v) S[k] = v;
   };
-  put("hiker", [by.hiker_walk_a, by.hiker_walk_b]);
+  // animation arrays grow to 4 frames when the optional _c/_d cells exist
+  const frames = (a, b, c, d) => {
+    const arr = [a, b];
+    if (c && d) arr.push(c, d);
+    return arr;
+  };
+  put("hiker", frames(by.hiker_walk_a, by.hiker_walk_b, by.hiker_walk_c, by.hiker_walk_d));
   if (S.hiker) S.hikerL = S.hiker.map(flip);
   put("hikerJump", by.hiker_jump); if (S.hikerJump) S.hikerJumpL = flip(S.hikerJump);
   put("hikerTrudge", by.hiker_trudge); if (S.hikerTrudge) S.hikerTrudgeL = flip(S.hikerTrudge);
-  put("chip", [by.chipmunk_a, by.chipmunk_b]);
+  put("chip", frames(by.chipmunk_a, by.chipmunk_b, by.chipmunk_c, by.chipmunk_d));
   if (S.chip) S.chipL = S.chip.map(flip);
   put("chipSquash", by.chipmunk_squash);
-  put("frog", [by.frog_sit, by.frog_leap]);
-  put("snake", [by.snake_a, by.snake_b]);
+  put("frog", frames(by.frog_sit, by.frog_leap, by.frog_c, by.frog_d));
+  put("snake", frames(by.snake_a, by.snake_b, by.snake_c, by.snake_d));
   if (S.snake) S.snakeL = S.snake.map(flip);
-  put("bird", [by.bird_a, by.bird_b]);
+  put("bird", frames(by.bird_a, by.bird_b, by.bird_c, by.bird_d));
   if (S.bird) S.birdL = S.bird.map(flip);
   put("snack", by.snack); put("star", by.star); put("matchbox", by.matchbox);
   put("fruit", by.fruit);
   put("frogDead", by.frog_dead); put("snakeDead", by.snake_dead); put("birdDead", by.bird_dead);
-  put("bear", [by.bear_a, by.bear_b]);
+  put("bear", frames(by.bear_a, by.bear_b, by.bear_c, by.bear_d));
   if (S.bear) S.bearL = S.bear.map(flip);
   put("sign", by.sign); put("cairn", by.cairn); put("tent", by.tent);
   put("treeSmall", by.tree_small); put("treeLarge", by.tree_large);

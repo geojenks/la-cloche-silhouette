@@ -131,14 +131,23 @@ class Player {
     if (this.swimming) return this.facing > 0 ? Sprites.hikerJump : Sprites.hikerJumpL;
     if (!this.onGround) return this.facing > 0 ? Sprites.hikerJump : Sprites.hikerJumpL;
     if (this.trudge) return this.facing > 0 ? Sprites.hikerTrudge : Sprites.hikerTrudgeL;
-    // dancing: walk frames double as dance steps, flipping on the beat
-    const f = Math.floor(this.anim) % 2;
-    return (this.facing > 0 ? Sprites.hiker : Sprites.hikerL)[f];
+    // dancing: walk frames double as dance steps, stepping on the beat
+    const arr = this.facing > 0 ? Sprites.hiker : Sprites.hikerL;
+    return arr[Math.floor(this.anim) % arr.length];
   }
 }
 
 class Enemy {
-  constructor(x, y) { this.x = x; this.y = y; this.vx = 0; this.vy = 0; this.remove = false; this.dead = false; this.deadT = 0; }
+  constructor(x, y) {
+    this.x = x; this.y = y; this.vx = 0; this.vy = 0;
+    this.remove = false; this.dead = false; this.deadT = 0;
+    this.beatFrame = 0; this.hype = 1;
+  }
+  // every animal keeps time — animation frames advance on the beat
+  keepTime(beats, intensity) {
+    if (beats.length) this.beatFrame += beats.length;
+    this.hype = intensity;
+  }
   dieStomp() { this.dead = true; this.deadT = 0.45; this.vx = 0; }
   dieBonk() { this.dead = true; this.deadT = 0.8; this.vy = -220; this.spin = true; }
   baseDead(dt, level) {
@@ -157,10 +166,10 @@ class Enemy {
 class Chipmunk extends Enemy {
   constructor(x, y, dir = -1) { super(x, y); this.w = 12; this.h = 8; this.dir = dir; this.anim = 0; }
   update(dt, level, player, beats, intensity) {
+    this.keepTime(beats, intensity);
     if (this.dead) return this.baseDead(dt, level);
     if (intensity >= 3) { // dance break: bop in place
       this.vx = 0;
-      if (beats.length) this.anim++;
       return moveY(this, dt, level, { noPlatforms: true });
     }
     // turn at ledges instead of walking off (koopa-red rules)
@@ -177,8 +186,10 @@ class Chipmunk extends Enemy {
   }
   sprite() {
     if (this.dead) return Sprites.chipSquash;
-    const f = Math.floor(this.anim) % 2;
-    return (this.dir <= 0 ? Sprites.chip : Sprites.chipL)[f];
+    const arr = this.dir <= 0 ? Sprites.chip : Sprites.chipL;
+    // scurrying animates by speed; dancing snaps to the beat
+    const f = this.hype >= 3 ? this.beatFrame : Math.floor(this.anim);
+    return arr[f % arr.length];
   }
   stompable = true;
   bouncy = true; // stomping a chipmunk launches you extra high
@@ -187,6 +198,7 @@ class Chipmunk extends Enemy {
 class Frog extends Enemy {
   constructor(x, y) { super(x, y); this.w = 10; this.h = 8; this.onGround = false; }
   update(dt, level, player, beats, intensity) {
+    this.keepTime(beats, intensity);
     if (this.dead) return this.baseDead(dt, level);
     // always hops toward you — but only ever on the downbeat, so it's a
     // pursuer you can time rather than a relentless one (at full hype it
@@ -202,6 +214,9 @@ class Frog extends Enemy {
   }
   sprite() {
     if (this.dead) return Sprites.frogDead || Sprites.frog[0];
+    // dedicated dance frames (cells frog_c/frog_d) when raving and present
+    if (this.hype >= 3 && Sprites.frog.length > 2)
+      return Sprites.frog[2 + this.beatFrame % (Sprites.frog.length - 2)];
     return this.onGround ? Sprites.frog[0] : Sprites.frog[1];
   }
   stompable = true;
@@ -213,11 +228,11 @@ class Snake extends Enemy {
     this.state = "coiled"; this.dir = -1;
   }
   update(dt, level, player, beats, intensity) {
+    this.keepTime(beats, intensity);
     if (this.dead) return this.baseDead(dt, level);
     if (this.state === "coiled") {
       this.vx = 0;
       if (intensity >= 3) { // dancing, not striking
-        if (beats.length) this.anim++;
         return moveY(this, dt, level, { noPlatforms: true });
       }
       // ambush: a straight beeline at where you ARE the moment it strikes,
@@ -243,8 +258,10 @@ class Snake extends Enemy {
   }
   sprite() {
     if (this.dead) return Sprites.snakeDead || Sprites.snake[0];
-    const f = this.state === "coiled" ? 0 : Math.floor(this.anim) % 2;
-    return (this.dir <= 0 ? Sprites.snake : Sprites.snakeL)[f];
+    const arr = this.dir <= 0 ? Sprites.snake : Sprites.snakeL;
+    // coiled it sways to the beat; dashing it animates fast
+    const f = this.state === "coiled" ? this.beatFrame : Math.floor(this.anim);
+    return arr[f % arr.length];
   }
   stompable = false; // spiky rule: never safe to touch — jump over it
 }
@@ -256,6 +273,7 @@ class Bird extends Enemy {
     this.anim = 0; this.diving = 0;
   }
   update(dt, level, player, beats, intensity) {
+    this.keepTime(beats, intensity);
     if (this.dead) return this.baseDead(dt, level);
     // steady sweep of a fixed beat of sky...
     if (this.x < this.homeX - this.range) this.dir = 1;
@@ -281,8 +299,9 @@ class Bird extends Enemy {
   }
   sprite() {
     if (this.dead) return Sprites.birdDead || Sprites.bird[0];
-    const f = Math.floor(this.anim) % 2;
-    return (this.vx <= 0 ? Sprites.bird : Sprites.birdL)[f];
+    // wings beat with the music
+    const arr = this.vx <= 0 ? Sprites.bird : Sprites.birdL;
+    return arr[this.beatFrame % arr.length];
   }
   stompable = false; // special-cased: top = springboard, below = bonk
 }
@@ -302,9 +321,9 @@ class Bear extends Enemy {
     Sfx.play("hiss", 0.6); // huff
   }
   update(dt, level, player, beats, intensity) {
+    this.keepTime(beats, intensity);
     if (intensity >= 3 && this.state !== "flee") { // even the bear raves
       this.vx = 0;
-      if (beats.length) this.anim++;
       return moveY(this, dt, level, { noPlatforms: true });
     }
     if (this.state === "prowl") {
@@ -324,8 +343,10 @@ class Bear extends Enemy {
     this.anim += dt * (this.state === "flee" ? 14 : 5);
   }
   sprite() {
-    const f = Math.floor(this.anim) % 2;
-    return (this.dir <= 0 ? Sprites.bear : Sprites.bearL)[f];
+    const arr = this.dir <= 0 ? Sprites.bear : Sprites.bearL;
+    // lumbers (and raves) in time; only fleeing breaks tempo
+    const f = this.state === "flee" ? Math.floor(this.anim) : this.beatFrame;
+    return arr[f % arr.length];
   }
   stompable = false; // special-cased: stomp startles it, nothing kills it
   damage = 40;
