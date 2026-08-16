@@ -165,18 +165,13 @@ class Chipmunk extends Enemy {
 }
 
 class Frog extends Enemy {
-  constructor(x, y, dir = -1) {
-    super(x, y); this.w = 10; this.h = 8; this.onGround = false;
-    this.homeX = x; this.dir = dir;
-  }
+  constructor(x, y) { super(x, y); this.w = 10; this.h = 8; this.onGround = false; }
   update(dt, level, player, beats, intensity) {
     if (this.dead) return this.baseDead(dt, level);
-    // hops exactly on downbeats, ping-ponging around its home spot — a
-    // metronome you time your run past
+    // always hops toward you — but only ever on the downbeat, so it's a
+    // pursuer you can time rather than a relentless one
     if (this.onGround && beats.some(b => b.type === "downbeat")) {
-      if (Math.abs(this.x - this.homeX) > 40) this.dir = Math.sign(this.homeX - this.x);
-      this.vy = -240; this.vx = 65 * this.dir;
-      this.dir *= -1;
+      this.vy = -240; this.vx = 65 * (Math.sign(player.x - this.x) || -1);
     }
     if (this.onGround) this.vx *= 0.6;
     moveX(this, this.vx * dt, level);
@@ -187,25 +182,33 @@ class Frog extends Enemy {
 }
 
 class Snake extends Enemy {
-  constructor(x, y, dir = -1) {
+  constructor(x, y) {
     super(x, y); this.w = 22; this.h = 8; this.anim = 0;
-    this.homeX = x; this.range = 60; this.dir = dir;
+    this.state = "coiled"; this.dir = -1;
   }
   update(dt, level, player, beats, intensity) {
     if (this.dead) return this.baseDead(dt, level);
-    // slow patrol of a fixed range
-    if (this.x < this.homeX - this.range) this.dir = 1;
-    if (this.x > this.homeX + this.range) this.dir = -1;
-    this.vx = 30 * this.dir;
+    if (this.state === "coiled") {
+      this.vx = 0;
+      // ambush: strikes when you get close, then commits to the direction
+      if (Math.abs(player.x - this.x) < 90 && Math.abs(player.y - this.y) < 60) {
+        this.state = "dash";
+        this.dir = Math.sign(player.x - this.x) || -1;
+      }
+      return moveY(this, dt, level, { noPlatforms: true });
+    }
+    // dash: fast, straight, and gone — off-screen it despawns (the enemy
+    // cull handles that); a wall ends the dash into the rocks
+    this.vx = this.dir * (150 + intensity * 15);
     const beforeVx = this.vx;
     moveX(this, this.vx * dt, level);
-    if (this.vx === 0 && beforeVx !== 0) this.dir *= -1;
+    if (this.vx === 0 && beforeVx !== 0) this.remove = true;
     moveY(this, dt, level, { noPlatforms: true });
-    this.anim += dt * 6;
+    this.anim += dt * 14;
   }
   sprite() {
-    const f = Math.floor(this.anim) % 2;
-    return (this.vx <= 0 ? Sprites.snake : Sprites.snakeL)[f];
+    const f = this.state === "coiled" ? 0 : Math.floor(this.anim) % 2;
+    return (this.dir <= 0 ? Sprites.snake : Sprites.snakeL)[f];
   }
   stompable = false; // spiky rule: never safe to touch — jump over it
 }
@@ -222,9 +225,11 @@ class Bird extends Enemy {
     if (this.x < this.homeX - this.range) this.dir = 1;
     if (this.x > this.homeX + this.range) this.dir = -1;
     this.vx = this.dir * (60 + intensity * 15);
-    // ...but on a pumping downbeat with prey below, it dives
-    if (this.diving <= 0 && intensity >= 2 && beats.some(b => b.type === "downbeat") &&
-        Math.abs(this.x - player.x) < 100 && player.y > this.y) this.diving = 0.7;
+    // ...but every now and then, on a downbeat with prey below, it dives
+    // (more often the harder the music is going)
+    if (this.diving <= 0 && beats.some(b => b.type === "downbeat") &&
+        Math.abs(this.x - player.x) < 100 && player.y > this.y &&
+        Math.random() < 0.15 + 0.15 * intensity) this.diving = 0.7;
     if (this.diving > 0) {
       this.diving -= dt;
       this.y += (player.y - this.y) * 1.8 * dt;

@@ -38,6 +38,7 @@
     { "name": "sun",        "cell": [5, 3], "w": 24, "h": 24, "proc": "sun" },
     { "name": "cloud",      "cell": [6, 3], "w": 28, "h": 14, "proc": "cloud" },
 
+    { "name": "fruit",          "cell": [4, 4], "w": 8,  "h": 8,  "atlas": "fruit" },
     { "name": "tile_forest",    "cell": [0, 4], "w": 16, "h": 16, "proc": "tile_forest" },
     { "name": "tile_dirt",      "cell": [1, 4], "w": 16, "h": 16, "proc": "tile_dirt" },
     { "name": "tile_quartzite", "cell": [2, 4], "w": 16, "h": 16, "proc": "tile_quartzite" },

@@ -10,8 +10,19 @@ const ctx2d = canvas.getContext("2d");
 canvas.width = VIEW_W; canvas.height = VIEW_H;
 ctx2d.imageSmoothingEnabled = false;
 
+// The backing store tracks the element's real device-pixel size and the
+// whole scene is drawn under one scale transform. Text rasterizes at native
+// resolution (crisp on laptops) instead of being a stretched 480px bitmap.
+function fitCanvas() {
+  const r = canvas.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  const w = Math.max(VIEW_W, Math.round(r.width * dpr));
+  const h = Math.max(VIEW_H, Math.round(r.height * dpr));
+  if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
+}
+
 const music = new MusicManager();
-let level = null, player = null, enemies = [], state = "boot";
+let level = null, player = null, enemies = [], drops = [], state = "boot";
 let camX = 0, camY = 0, bgPulse = 0, elapsed = 0, fade = 0;
 let checkpoint = null, spawnAlt = 0, toastT = 0, toastText = "";
 let dayCfg = null, nightAnim = 0;
@@ -78,7 +89,7 @@ async function boot() {
 
 function startRun() {
   player = new Player(40, level.groundTop(40) - 20);
-  enemies = [];
+  enemies = []; drops = [];
   for (const s of level.spawns) s.done = false;
   checkpoint = level.checkpoints[0];
   elapsed = 0; camX = 0;
@@ -145,6 +156,8 @@ function spawnFromBeats(beats, intensity) {
 }
 
 // ------------------------------------------------------------ collisions --
+function spawnDrop(x, y) { drops.push({ x, y, vy: -120 }); }
+
 function handleCollisions(prevBottom, prevTop) {
   for (const e of enemies) {
     if (e.dead || !overlap(player, e)) continue;
@@ -154,11 +167,22 @@ function handleCollisions(prevBottom, prevTop) {
         toast("Woah — thermal lift!");
       } else if (player.vy < -20 && prevTop >= e.y + e.h - 6) {
         e.dieBonk();
+        if (Math.random() < 0.35) spawnDrop(e.x + e.w / 2, e.y);
       } else if (player.hurt(e.x + e.w / 2)) bgPulse = 1;
     } else if (e.stompable && player.vy > 40 && prevBottom <= e.y + 6) {
       e.dieStomp();
       player.vy = input.jump ? -330 : -240;
+      if (Math.random() < 0.35) spawnDrop(e.x + e.w / 2, e.y);
     } else if (player.hurt(e.x + e.w / 2)) bgPulse = 1;
+  }
+  // fruit trees: bonk from below to knock a snack loose
+  for (const f of level.fruits) {
+    if (f.taken || player.vy >= -20) continue;
+    const box = { x: f.x - 5, y: f.y - 4, w: 10, h: 9 };
+    if (overlap(player, box) && prevTop >= f.y + 2) {
+      f.taken = true;
+      spawnDrop(f.x, f.y);
+    }
   }
   for (const p of level.pickups) {
     if (p.taken) continue;
@@ -214,6 +238,14 @@ function updatePlay(dt) {
   enemies = enemies.filter(e => !e.remove && e.x > camX - 250 && e.x < camX + VIEW_W + 600);
   handleCollisions(prevBottom, prevTop);
 
+  // knocked-loose snacks fall until they land, then become pickups
+  for (const d of drops) {
+    d.vy += 900 * dt; d.y += d.vy * dt;
+    const top = level.groundTop(d.x);
+    if (d.y >= top - 7) { d.landed = true; level.pickups.push({ type: "snack", x: d.x, y: top - 14, taken: false }); }
+  }
+  drops = drops.filter(d => !d.landed);
+
   camX = Math.max(0, Math.min(level.length - VIEW_W, player.x - VIEW_W * 0.38 + player.vx * 0.25));
 
   if (player.x > level.tentX + 20) { state = "night"; nightAnim = 0; music.underwater(false); }
@@ -233,7 +265,21 @@ function skyColors(p) {
 
 function render(dt) {
   const g = ctx2d;
-  g.clearRect(0, 0, VIEW_W, VIEW_H);
+  fitCanvas();
+  const sf = Math.min(canvas.width / VIEW_W, canvas.height / VIEW_H);
+  const ox = (canvas.width - VIEW_W * sf) / 2, oy = (canvas.height - VIEW_H * sf) / 2;
+  g.setTransform(1, 0, 0, 1, 0, 0);
+  g.fillStyle = "#101418";
+  g.fillRect(0, 0, canvas.width, canvas.height);
+  g.setTransform(sf, 0, 0, sf, ox, oy);
+  g.imageSmoothingEnabled = false;
+  g.save();
+  g.beginPath(); g.rect(0, 0, VIEW_W, VIEW_H); g.clip();
+  renderScene(g, dt);
+  g.restore();
+}
+
+function renderScene(g, dt) {
   if (state === "boot") { g.fillStyle = "#111"; g.fillRect(0, 0, VIEW_W, VIEW_H); return; }
   if (state === "title") return renderTitle(g);
   if (state === "night") return renderNight(g);
@@ -334,13 +380,18 @@ function render(dt) {
     g.drawImage(Sprites.cairn, c.x, level.groundTop(c.x) - Sprites.cairn.height);
   g.drawImage(Sprites.tent, level.tentX, level.groundTop(level.tentX) - Sprites.tent.height);
 
-  // pickups (bob on the beat)
+  // pickups (bob on the beat), fruit in the canopies, falling drops
   const bob = Math.sin(music.beatPhase() * Math.PI * 2) * 1.5;
   for (const pk of level.pickups) {
     if (pk.taken || pk.x < camX - 20 || pk.x > camX + VIEW_W + 20) continue;
     const spr = pk.type === "star" ? Sprites.star : Sprites.snack;
     g.drawImage(spr, Math.round(pk.x - spr.width / 2), Math.round(pk.y - spr.height / 2 + bob));
   }
+  for (const f of level.fruits) {
+    if (f.taken || f.x < camX - 20 || f.x > camX + VIEW_W + 20) continue;
+    g.drawImage(Sprites.fruit, Math.round(f.x - 4), Math.round(f.y - 4 + bob * 0.6));
+  }
+  for (const d of drops) g.drawImage(Sprites.snack, Math.round(d.x - 4), Math.round(d.y - 4));
 
   // enemies
   for (const e of enemies) {

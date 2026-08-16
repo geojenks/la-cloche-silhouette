@@ -109,8 +109,10 @@ class Level {
     this.tentX = (this.cols - 16) * TILE;
 
     // --- pickups -----------------------------------------------------------
+    // sparse on the ground — most snacks come from fruit trees and
+    // enemy drops now
     this.pickups = [];
-    for (let c = 24; c < this.cols - 40; c += 45 + Math.floor(rnd() * 30)) {
+    for (let c = 24; c < this.cols - 40; c += 80 + Math.floor(rnd() * 60)) {
       if (this.biomeOf(c) === "lake") continue;
       this.pickups.push({ type: "snack", x: c * TILE, y: this.top[c] - 14, taken: false });
     }
@@ -147,12 +149,18 @@ class Level {
       }
     }
 
-    // --- decor -------------------------------------------------------------
+    // --- decor + fruit hanging in some trees (bonk from below to knock
+    // a snack down, like a ? block) --------------------------------------
     this.decor = [];
+    this.fruits = [];
     for (let c = 2; c < this.cols - 2; c++) {
       const b = this.biomeOf(c), x = c * TILE + rnd() * TILE;
-      if (b === "forest" && rnd() < 0.14)
-        this.decor.push({ type: "tree", x, y: this.top[c], s: 0.7 + rnd() * 0.9 });
+      if (b === "forest" && rnd() < 0.14) {
+        const s = 0.7 + rnd() * 0.9;
+        this.decor.push({ type: "tree", x, y: this.top[c], s });
+        if (s > 0.9 && rnd() < 0.4)
+          this.fruits.push({ x, y: this.top[c] - 40 * s + 4, taken: false });
+      }
       else if (b === "quartzite" && rnd() < 0.1)
         this.decor.push({ type: "boulder", x, y: this.top[c], s: 0.5 + rnd() * 0.8 });
       else if (b === "lake" && rnd() < 0.2 && Math.abs(c - this.lakeCol) < 12)

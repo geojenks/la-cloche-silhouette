@@ -299,6 +299,16 @@ const MATCHBOX = [
   "ycrrrrcy",
   ".yyyyyy.",
 ];
+const FRUIT = [
+  "...gk...",
+  "..ee.k..",
+  ".eeeeee.",
+  ".eeReee.",
+  ".eeeeee.",
+  "..eeee..",
+  "........",
+  "........",
+];
 
 const Sprites = {};
 
@@ -348,6 +358,7 @@ function sliceSheet(mf, img, partial) {
   put("bird", [by.bird_a, by.bird_b]);
   if (S.bird) S.birdL = S.bird.map(flip);
   put("snack", by.snack); put("star", by.star); put("matchbox", by.matchbox);
+  put("fruit", by.fruit);
   put("sign", by.sign); put("cairn", by.cairn); put("tent", by.tent);
   put("treeSmall", by.tree_small); put("treeLarge", by.tree_large);
   put("boulder", by.boulder); put("reed", by.reed); put("flower", by.flower);
@@ -405,4 +416,5 @@ function buildAtlas() {
   Sprites.sign = makeSprite(SIGN);
   Sprites.cairn = makeSprite(CAIRN);
   Sprites.matchbox = makeSprite(MATCHBOX);
+  Sprites.fruit = makeSprite(FRUIT);
 }
