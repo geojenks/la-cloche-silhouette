@@ -75,6 +75,15 @@ class Level {
     }
     this.water = [{ x: this.lakeCol * TILE, y: surface, w: lakeW * TILE, h: floor - surface + 8 }];
 
+    // deep-dive bonus: a narrow crevice in the lake floor (Mario-pipe
+    // energy) — darker water, treasure at the bottom
+    const crevCol = this.lakeCol + Math.floor(lakeW * 0.62);
+    const crevDepth = 46;
+    const crevBottom = Math.min(WORLD_H - 6, floor + crevDepth);
+    for (let c = crevCol; c < crevCol + 2; c++) this.top[c] = crevBottom;
+    this.crevice = { x: crevCol * TILE, y: floor - 4, w: 2 * TILE, h: crevBottom - floor + 12 };
+    this.water.push(this.crevice);
+
     // --- platforms ---------------------------------------------------------
     this.platforms = [];
     // stepping stones across the lake
@@ -110,11 +119,33 @@ class Level {
       if (!p.stone && p !== this.secret && rnd() < 0.5)
         this.pickups.push({ type: "snack", x: p.x + p.w / 2, y: p.y - 14, taken: false });
     }
-    // underwater snack + the secret star
-    this.pickups.push({ type: "snack", x: this.water[0].x + this.water[0].w * 0.6, y: floor - 20, taken: false });
+    // underwater snack + crevice treasure + the secret star
+    this.pickups.push({ type: "snack", x: this.water[0].x + this.water[0].w * 0.45, y: floor - 20, taken: false });
+    this.pickups.push({ type: "star", x: this.crevice.x + this.crevice.w / 2, y: crevBottom - 10, taken: false });
+    this.pickups.push({ type: "snack", x: this.crevice.x + 8, y: crevBottom - 24, taken: false });
+    this.pickups.push({ type: "snack", x: this.crevice.x + this.crevice.w - 8, y: crevBottom - 24, taken: false });
     this.pickups.push({ type: "star", x: this.secret.x + this.secret.w / 2, y: this.secret.y - 16, taken: false });
     this.pickups.push({ type: "snack", x: this.secret.x + 16, y: this.secret.y - 14, taken: false });
     this.pickups.push({ type: "snack", x: this.secret.x + this.secret.w - 16, y: this.secret.y - 14, taken: false });
+
+    // --- fixed patrol enemies (timing puzzles) ----------------------------
+    // Seeded, geography-based hazards on predictable loops, independent of
+    // the beat-driven spawner. None in the opening stretch.
+    this.spawns = [];
+    for (let c = Math.floor(this.cols * 0.12); c < this.cols - 45; c += 120 + Math.floor(rnd() * 130)) {
+      const b = this.biomeOf(c);
+      if (b === "lake") {
+        this.spawns.push({ type: "frog", x: c * TILE, dir: rnd() < 0.5 ? -1 : 1 });
+      } else if (b === "quartzite") {
+        this.spawns.push(rnd() < 0.5
+          ? { type: "snake", x: c * TILE, dir: rnd() < 0.5 ? -1 : 1 }
+          : { type: "bird", x: c * TILE, alt: Math.max(60, this.top[c] - 70), dir: rnd() < 0.5 ? -1 : 1 });
+      } else {
+        this.spawns.push(rnd() < 0.6
+          ? { type: "chipmunk", x: c * TILE, dir: rnd() < 0.5 ? -1 : 1 }
+          : { type: "frog", x: c * TILE, dir: rnd() < 0.5 ? -1 : 1 });
+      }
+    }
 
     // --- decor -------------------------------------------------------------
     this.decor = [];

@@ -97,9 +97,11 @@ class Player {
     moveX(this, this.vx * dt, level);
     moveY(this, dt, level, { swim: this.swimming });
 
-    // stamina economy
+    // stamina economy — resting alone only gets you to a third of full;
+    // proper recovery needs snacks or a swim
     if (this.swimming) this.stamina = Math.min(100, this.stamina + 18 * dt);
-    else if (this.onGround && !input.left && !input.right) this.stamina = Math.min(100, this.stamina + 3 * dt);
+    else if (this.onGround && !input.left && !input.right && this.stamina < 33)
+      this.stamina = Math.min(33, this.stamina + 3 * dt);
     else if (Math.abs(this.vx) > 20) this.stamina = Math.max(0, this.stamina - 1.1 * dt);
     if (this.stamina <= 0) this.trudge = true;
     if (this.trudge && this.stamina > 25) this.trudge = false;
@@ -139,14 +141,18 @@ class Enemy {
   }
 }
 
+// Enemies run predictable movement loops, not player-tracking — loops make
+// their timing readable, so jumps can be planned (and level-placed groups
+// become timing puzzles). The music still touches them: speeds scale with
+// section intensity and frogs hop exactly on downbeats.
 class Chipmunk extends Enemy {
-  constructor(x, y) { super(x, y); this.w = 12; this.h = 8; this.speed = 55; this.anim = 0; }
+  constructor(x, y, dir = -1) { super(x, y); this.w = 12; this.h = 8; this.dir = dir; this.anim = 0; }
   update(dt, level, player, beats, intensity) {
     if (this.dead) return this.baseDead(dt, level);
-    this.speed = 50 + intensity * 12;
-    const dir = Math.sign(player.x - this.x) || -1;
-    this.vx = dir * this.speed;
+    this.vx = this.dir * (50 + intensity * 12);
+    const beforeVx = this.vx;
     moveX(this, this.vx * dt, level);
+    if (this.vx === 0 && beforeVx !== 0) this.dir *= -1; // wall: turn around
     moveY(this, dt, level, { noPlatforms: true });
     this.anim += dt * 12;
   }
@@ -159,12 +165,18 @@ class Chipmunk extends Enemy {
 }
 
 class Frog extends Enemy {
-  constructor(x, y) { super(x, y); this.w = 10; this.h = 8; this.onGround = false; }
+  constructor(x, y, dir = -1) {
+    super(x, y); this.w = 10; this.h = 8; this.onGround = false;
+    this.homeX = x; this.dir = dir;
+  }
   update(dt, level, player, beats, intensity) {
     if (this.dead) return this.baseDead(dt, level);
-    // hops exactly on downbeats — the signature beat-synced enemy
+    // hops exactly on downbeats, ping-ponging around its home spot — a
+    // metronome you time your run past
     if (this.onGround && beats.some(b => b.type === "downbeat")) {
-      this.vy = -240; this.vx = 65 * (Math.sign(player.x - this.x) || -1);
+      if (Math.abs(this.x - this.homeX) > 40) this.dir = Math.sign(this.homeX - this.x);
+      this.vy = -240; this.vx = 65 * this.dir;
+      this.dir *= -1;
     }
     if (this.onGround) this.vx *= 0.6;
     moveX(this, this.vx * dt, level);
@@ -175,11 +187,19 @@ class Frog extends Enemy {
 }
 
 class Snake extends Enemy {
-  constructor(x, y) { super(x, y); this.w = 22; this.h = 8; this.anim = 0; }
+  constructor(x, y, dir = -1) {
+    super(x, y); this.w = 22; this.h = 8; this.anim = 0;
+    this.homeX = x; this.range = 60; this.dir = dir;
+  }
   update(dt, level, player, beats, intensity) {
     if (this.dead) return this.baseDead(dt, level);
-    this.vx = 30 * (Math.sign(player.x - this.x) || -1);
+    // slow patrol of a fixed range
+    if (this.x < this.homeX - this.range) this.dir = 1;
+    if (this.x > this.homeX + this.range) this.dir = -1;
+    this.vx = 30 * this.dir;
+    const beforeVx = this.vx;
     moveX(this, this.vx * dt, level);
+    if (this.vx === 0 && beforeVx !== 0) this.dir *= -1;
     moveY(this, dt, level, { noPlatforms: true });
     this.anim += dt * 6;
   }
@@ -191,17 +211,20 @@ class Snake extends Enemy {
 }
 
 class Bird extends Enemy {
-  constructor(x, y) {
+  constructor(x, y, dir = -1) {
     super(x, y); this.w = 16; this.h = 10;
-    this.homeY = y; this.anim = 0; this.diving = 0;
+    this.homeX = x; this.homeY = y; this.range = 120; this.dir = dir;
+    this.anim = 0; this.diving = 0;
   }
   update(dt, level, player, beats, intensity) {
     if (this.dead) return this.baseDead(dt, level);
-    const dir = Math.sign(player.x + 30 * (player.vx > 0 ? 1 : -1) - this.x) || -1;
-    this.vx = dir * (60 + intensity * 15);
-    // dive at the player on downbeats when the music is pumping
+    // steady sweep of a fixed beat of sky...
+    if (this.x < this.homeX - this.range) this.dir = 1;
+    if (this.x > this.homeX + this.range) this.dir = -1;
+    this.vx = this.dir * (60 + intensity * 15);
+    // ...but on a pumping downbeat with prey below, it dives
     if (this.diving <= 0 && intensity >= 2 && beats.some(b => b.type === "downbeat") &&
-        Math.abs(this.x - player.x) < 120) this.diving = 0.7;
+        Math.abs(this.x - player.x) < 100 && player.y > this.y) this.diving = 0.7;
     if (this.diving > 0) {
       this.diving -= dt;
       this.y += (player.y - this.y) * 1.8 * dt;

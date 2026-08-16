@@ -79,6 +79,7 @@ async function boot() {
 function startRun() {
   player = new Player(40, level.groundTop(40) - 20);
   enemies = [];
+  for (const s of level.spawns) s.done = false;
   checkpoint = level.checkpoints[0];
   elapsed = 0; camX = 0;
   music.initGraph();
@@ -106,6 +107,18 @@ function resetToCheckpoint() {
 }
 
 // -------------------------------------------------------------- spawner ---
+// Level-placed patrol enemies activate as their spot scrolls into view.
+function spawnPlaced() {
+  for (const s of level.spawns) {
+    if (s.done || s.x > camX + VIEW_W + 60 || s.x < camX - 60) continue;
+    s.done = true;
+    if (s.type === "chipmunk") enemies.push(new Chipmunk(s.x, level.groundTop(s.x) - 8, s.dir));
+    else if (s.type === "frog") enemies.push(new Frog(s.x, level.groundTop(s.x) - 8, s.dir));
+    else if (s.type === "snake") enemies.push(new Snake(s.x, level.groundTop(s.x) - 8, s.dir));
+    else if (s.type === "bird") enemies.push(new Bird(s.x, s.alt, s.dir));
+  }
+}
+
 function spawnFromBeats(beats, intensity) {
   const maxEnemies = 1 + intensity * 2;
   let alive = enemies.filter(e => !e.dead).length;
@@ -195,6 +208,7 @@ function updatePlay(dt) {
     if (player.x >= c.x && (!checkpoint || c.x > checkpoint.x)) { if (checkpoint !== c) { checkpoint = c; toast(`Checkpoint — ${c.label}`); } }
   }
 
+  spawnPlaced();
   spawnFromBeats(beats, sec.intensity);
   for (const e of enemies) e.update(dt, level, player, beats, sec.intensity);
   enemies = enemies.filter(e => !e.remove && e.x > camX - 250 && e.x < camX + VIEW_W + 600);
@@ -340,13 +354,18 @@ function render(dt) {
     g.drawImage(spr, Math.round(player.x + player.w / 2 - spr.width / 2), Math.round(player.y + player.h - spr.height + 1));
   }
 
-  // water on top (translucent)
+  // water on top (translucent); the crevice reads darker the deeper it goes
   for (const w of level.water) {
     g.fillStyle = "rgba(52,120,180,0.55)";
     g.fillRect(w.x, w.y, w.w, w.h);
-    g.fillStyle = "rgba(220,240,255,0.7)";
-    const ph = music.beatPhase();
-    for (let i = 0; i < w.w; i += 24) g.fillRect(w.x + i + ph * 12, w.y, 10, 2);
+    if (w === level.crevice) {
+      g.fillStyle = "rgba(8,25,55,0.45)";
+      g.fillRect(w.x, w.y + w.h * 0.3, w.w, w.h * 0.7);
+    } else {
+      g.fillStyle = "rgba(220,240,255,0.7)";
+      const ph = music.beatPhase();
+      for (let i = 0; i < w.w; i += 24) g.fillRect(w.x + i + ph * 12, w.y, 10, 2);
+    }
   }
 
   g.restore();
