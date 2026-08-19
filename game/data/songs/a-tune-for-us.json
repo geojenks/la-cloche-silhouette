@@ -1,0 +1,76 @@
+{
+  "title": "A Tune For Us",
+  "artist": "Djrum",
+  "file": "media/audio_game/a-tune-for-us.mp3",
+  "bpm": 108.0,
+  "offset": 0.586,
+  "beatsPerBar": 4,
+  "duration": 353.27,
+  "sections": [
+    {
+      "t": 0.0,
+      "name": "sec1",
+      "intensity": 0
+    },
+    {
+      "t": 117.59,
+      "name": "sec2",
+      "intensity": 1
+    },
+    {
+      "t": 129.66,
+      "name": "sec3",
+      "intensity": 0
+    },
+    {
+      "t": 163.93,
+      "name": "sec4",
+      "intensity": 1
+    },
+    {
+      "t": 206.94,
+      "name": "sec5",
+      "intensity": 2
+    },
+    {
+      "t": 219.01,
+      "name": "sec6",
+      "intensity": 1
+    },
+    {
+      "t": 234.71,
+      "name": "sec7",
+      "intensity": 2
+    },
+    {
+      "t": 252.54,
+      "name": "sec8",
+      "intensity": 1
+    },
+    {
+      "t": 269.82,
+      "name": "sec9",
+      "intensity": 2
+    },
+    {
+      "t": 301.77,
+      "name": "sec10",
+      "intensity": 1
+    },
+    {
+      "t": 313.84,
+      "name": "sec11",
+      "intensity": 2
+    },
+    {
+      "t": 325.92,
+      "name": "sec12",
+      "intensity": 1
+    },
+    {
+      "t": 337.99,
+      "name": "sec13",
+      "intensity": 0
+    }
+  ]
+}

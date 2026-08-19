@@ -1,0 +1,71 @@
+{
+  "title": "Oops...",
+  "artist": "Two Shell",
+  "file": "media/audio_game/oops.mp3",
+  "bpm": 141.7,
+  "offset": 1.4,
+  "beatsPerBar": 4,
+  "duration": 152.59,
+  "sections": [
+    {
+      "t": 0.0,
+      "name": "sec1",
+      "intensity": 0
+    },
+    {
+      "t": 12.54,
+      "name": "sec2",
+      "intensity": 1
+    },
+    {
+      "t": 24.61,
+      "name": "sec3",
+      "intensity": 0
+    },
+    {
+      "t": 36.69,
+      "name": "sec4",
+      "intensity": 2
+    },
+    {
+      "t": 48.76,
+      "name": "sec5",
+      "intensity": 3
+    },
+    {
+      "t": 60.84,
+      "name": "sec6",
+      "intensity": 2
+    },
+    {
+      "t": 72.91,
+      "name": "sec7",
+      "intensity": 3
+    },
+    {
+      "t": 84.99,
+      "name": "sec8",
+      "intensity": 1
+    },
+    {
+      "t": 100.4,
+      "name": "sec9",
+      "intensity": 0
+    },
+    {
+      "t": 112.66,
+      "name": "sec10",
+      "intensity": 3
+    },
+    {
+      "t": 124.74,
+      "name": "sec11",
+      "intensity": 2
+    },
+    {
+      "t": 141.55,
+      "name": "sec12",
+      "intensity": 1
+    }
+  ]
+}

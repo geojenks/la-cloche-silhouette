@@ -1,0 +1,76 @@
+{
+  "title": "Take It Off",
+  "artist": "FISHER x AATIG",
+  "file": "media/audio_game/take-it-off.mp3",
+  "bpm": 127.0,
+  "offset": 1.395,
+  "beatsPerBar": 4,
+  "duration": 194.26,
+  "sections": [
+    {
+      "t": 0.0,
+      "name": "sec1",
+      "intensity": 0
+    },
+    {
+      "t": 13.65,
+      "name": "sec2",
+      "intensity": 3
+    },
+    {
+      "t": 44.86,
+      "name": "sec3",
+      "intensity": 2
+    },
+    {
+      "t": 56.94,
+      "name": "sec4",
+      "intensity": 1
+    },
+    {
+      "t": 72.45,
+      "name": "sec5",
+      "intensity": 2
+    },
+    {
+      "t": 84.52,
+      "name": "sec6",
+      "intensity": 3
+    },
+    {
+      "t": 99.94,
+      "name": "sec7",
+      "intensity": 2
+    },
+    {
+      "t": 112.01,
+      "name": "sec8",
+      "intensity": 3
+    },
+    {
+      "t": 124.74,
+      "name": "sec9",
+      "intensity": 1
+    },
+    {
+      "t": 149.07,
+      "name": "sec10",
+      "intensity": 2
+    },
+    {
+      "t": 161.15,
+      "name": "sec11",
+      "intensity": 3
+    },
+    {
+      "t": 176.94,
+      "name": "sec12",
+      "intensity": 2
+    },
+    {
+      "t": 189.01,
+      "name": "sec13",
+      "intensity": 3
+    }
+  ]
+}

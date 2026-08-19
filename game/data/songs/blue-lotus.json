@@ -1,0 +1,121 @@
+{
+  "title": "Blue Lotus",
+  "artist": "Ali",
+  "file": "media/audio_game/blue-lotus.mp3",
+  "bpm": 108.0,
+  "offset": 1.877,
+  "beatsPerBar": 4,
+  "duration": 306.14,
+  "sections": [
+    {
+      "t": 0.0,
+      "name": "sec1",
+      "intensity": 0
+    },
+    {
+      "t": 17.28,
+      "name": "sec2",
+      "intensity": 1
+    },
+    {
+      "t": 34.55,
+      "name": "sec3",
+      "intensity": 3
+    },
+    {
+      "t": 48.58,
+      "name": "sec4",
+      "intensity": 1
+    },
+    {
+      "t": 63.44,
+      "name": "sec5",
+      "intensity": 2
+    },
+    {
+      "t": 78.58,
+      "name": "sec6",
+      "intensity": 1
+    },
+    {
+      "t": 93.99,
+      "name": "sec7",
+      "intensity": 2
+    },
+    {
+      "t": 108.86,
+      "name": "sec8",
+      "intensity": 1
+    },
+    {
+      "t": 124.27,
+      "name": "sec9",
+      "intensity": 3
+    },
+    {
+      "t": 136.63,
+      "name": "sec10",
+      "intensity": 1
+    },
+    {
+      "t": 148.7,
+      "name": "sec11",
+      "intensity": 2
+    },
+    {
+      "t": 160.77,
+      "name": "sec12",
+      "intensity": 3
+    },
+    {
+      "t": 172.85,
+      "name": "sec13",
+      "intensity": 0
+    },
+    {
+      "t": 185.11,
+      "name": "sec14",
+      "intensity": 3
+    },
+    {
+      "t": 198.3,
+      "name": "sec15",
+      "intensity": 1
+    },
+    {
+      "t": 214.55,
+      "name": "sec16",
+      "intensity": 2
+    },
+    {
+      "t": 226.91,
+      "name": "sec17",
+      "intensity": 1
+    },
+    {
+      "t": 244.55,
+      "name": "sec18",
+      "intensity": 3
+    },
+    {
+      "t": 258.02,
+      "name": "sec19",
+      "intensity": 1
+    },
+    {
+      "t": 275.39,
+      "name": "sec20",
+      "intensity": 3
+    },
+    {
+      "t": 287.46,
+      "name": "sec21",
+      "intensity": 1
+    },
+    {
+      "t": 299.54,
+      "name": "sec22",
+      "intensity": 0
+    }
+  ]
+}

@@ -1,0 +1,36 @@
+{
+  "title": "Sad Organ",
+  "artist": "Men I Trust",
+  "file": "media/audio_game/sad-organ.mp3",
+  "bpm": 113.0,
+  "offset": 0.591,
+  "beatsPerBar": 4,
+  "duration": 110.41,
+  "sections": [
+    {
+      "t": 0.0,
+      "name": "sec1",
+      "intensity": 0
+    },
+    {
+      "t": 12.07,
+      "name": "sec2",
+      "intensity": 3
+    },
+    {
+      "t": 24.15,
+      "name": "sec3",
+      "intensity": 2
+    },
+    {
+      "t": 87.03,
+      "name": "sec4",
+      "intensity": 1
+    },
+    {
+      "t": 99.1,
+      "name": "sec5",
+      "intensity": 0
+    }
+  ]
+}

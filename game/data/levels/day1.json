@@ -3,12 +3,25 @@
   "name": "Trailhead to H20",
   "km": 26.7,
   "seed": 108,
-  "playlist": ["trailhead-test"],
-  "lakes": [{ "at": 0.45 }],
+  "playlist": [
+    "take-it-off",
+    "oops",
+    "tembandumba",
+    "blue-lotus",
+    "a-tune-for-us",
+    "coffee",
+    "sad-organ",
+    "now-we-are-free"
+  ],
+  "lakes": [
+    {
+      "at": 0.45
+    }
+  ],
   "night": {
     "index": 1,
     "gif": null,
-    "caption": "Night 1 — H20, first camp",
+    "caption": "Night 1 \u00e2\u20ac\u201d H20, first camp",
     "bear": false
   }
 }

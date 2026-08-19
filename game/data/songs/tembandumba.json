@@ -1,0 +1,141 @@
+{
+  "title": "Tembandumba",
+  "artist": "Aroop Roy",
+  "file": "media/audio_game/tembandumba.mp3",
+  "bpm": 122.0,
+  "offset": 1.695,
+  "beatsPerBar": 4,
+  "duration": 492.67,
+  "sections": [
+    {
+      "t": 0.0,
+      "name": "sec1",
+      "intensity": 0
+    },
+    {
+      "t": 38.17,
+      "name": "sec2",
+      "intensity": 1
+    },
+    {
+      "t": 50.25,
+      "name": "sec3",
+      "intensity": 2
+    },
+    {
+      "t": 69.38,
+      "name": "sec4",
+      "intensity": 1
+    },
+    {
+      "t": 81.46,
+      "name": "sec5",
+      "intensity": 0
+    },
+    {
+      "t": 101.61,
+      "name": "sec6",
+      "intensity": 1
+    },
+    {
+      "t": 113.68,
+      "name": "sec7",
+      "intensity": 2
+    },
+    {
+      "t": 155.02,
+      "name": "sec8",
+      "intensity": 1
+    },
+    {
+      "t": 167.74,
+      "name": "sec9",
+      "intensity": 2
+    },
+    {
+      "t": 179.82,
+      "name": "sec10",
+      "intensity": 1
+    },
+    {
+      "t": 191.89,
+      "name": "sec11",
+      "intensity": 0
+    },
+    {
+      "t": 204.61,
+      "name": "sec12",
+      "intensity": 1
+    },
+    {
+      "t": 216.69,
+      "name": "sec13",
+      "intensity": 0
+    },
+    {
+      "t": 228.76,
+      "name": "sec14",
+      "intensity": 1
+    },
+    {
+      "t": 246.69,
+      "name": "sec15",
+      "intensity": 2
+    },
+    {
+      "t": 260.99,
+      "name": "sec16",
+      "intensity": 1
+    },
+    {
+      "t": 278.92,
+      "name": "sec17",
+      "intensity": 2
+    },
+    {
+      "t": 292.2,
+      "name": "sec18",
+      "intensity": 0
+    },
+    {
+      "t": 320.81,
+      "name": "sec19",
+      "intensity": 2
+    },
+    {
+      "t": 334.27,
+      "name": "sec20",
+      "intensity": 1
+    },
+    {
+      "t": 374.12,
+      "name": "sec21",
+      "intensity": 0
+    },
+    {
+      "t": 389.82,
+      "name": "sec22",
+      "intensity": 1
+    },
+    {
+      "t": 401.89,
+      "name": "sec23",
+      "intensity": 2
+    },
+    {
+      "t": 421.21,
+      "name": "sec24",
+      "intensity": 1
+    },
+    {
+      "t": 460.87,
+      "name": "sec25",
+      "intensity": 2
+    },
+    {
+      "t": 479.35,
+      "name": "sec26",
+      "intensity": 1
+    }
+  ]
+}

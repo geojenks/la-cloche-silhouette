@@ -1,0 +1,16 @@
+{
+  "title": "Now We Are Free",
+  "artist": "Hans Zimmer & Lisa Gerrard (Gladiator)",
+  "file": "media/audio_game/now-we-are-free.mp3",
+  "bpm": 137.9,
+  "offset": 0.24,
+  "beatsPerBar": 4,
+  "duration": 254.29,
+  "sections": [
+    {
+      "t": 0.0,
+      "name": "sec1",
+      "intensity": 0
+    }
+  ]
+}
