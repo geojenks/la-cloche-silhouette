@@ -114,7 +114,10 @@ async function main() {
     const px = cx + Math.floor((mf.cell.w - s.w) / 2);
     const py = cy + Math.floor((artH - s.h) / 2);
     if (s.atlas) {
-      const spr = s.frame !== undefined ? Sprites[s.atlas][s.frame] : Sprites[s.atlas];
+      // optional extra frames (_c/_d) have no placeholder art: show the
+      // base frame as a pose reference for GPT to vary
+      const a = Sprites[s.atlas];
+      const spr = s.frame !== undefined ? a[s.frame % a.length] : a;
       g.drawImage(spr, 0, 0, spr.width, spr.height, px, py, s.w, s.h);
     } else if (PROC[s.proc]) {
       g.save(); g.translate(px, py);

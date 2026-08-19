@@ -43,6 +43,17 @@ any editor rather than re-rolling the whole sheet; the normalizer samples
 the sheet's corners for the background color, so a slightly-off magenta
 still keys out.
 
+## Animation frames (2 or 4)
+
+Every animal's `_a`/`_b` cells are its two animation frames, and all of
+them advance ON THE BEAT (birds flap, coiled snakes sway, the bear
+lumbers in time — the world is always dancing at some energy). Each
+animal also has optional `_c`/`_d` cells (hiker walk, chipmunk, frog,
+snake, bird, bear): draw them and that animal gets a 4-frame cycle; leave
+them magenta and it stays 2-frame. Frogs use `frog_c`/`frog_d` as
+dedicated rave-dance poses. Optional cells work per-sheet — e.g. 2 frames
+in the base sheet but 4 in the rave variant.
+
 ## Hype variant sheets (0 calm / 2 dance / 3 rave)
 
 The game switches sprite sets live with the music's hype = each song

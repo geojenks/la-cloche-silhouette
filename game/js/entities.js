@@ -94,8 +94,10 @@ class Player {
     }
     if (!input.jump && this.vy < -150 && !this.swimming && this.superBounceT <= 0) this.vy = -150;
 
+    const wasOnGround = this.onGround;
     moveX(this, this.vx * dt, level);
     moveY(this, dt, level, { swim: this.swimming });
+    this.justLanded = this.onGround && !wasOnGround;
 
     // stamina economy — resting only works at vista spots (high ground
     // with the big view) and tops out at 75; full recovery needs snacks
@@ -116,9 +118,9 @@ class Player {
     if (Math.abs(this.vx) > 10 && this.onGround) this.anim += dt * (this.trudge ? 5 : 10);
   }
 
-  hurt(fromX) {
+  hurt(fromX, dmg = 15) {
     if (this.invuln > 0) return false;
-    this.stamina = Math.max(0, this.stamina - 15);
+    this.stamina = Math.max(0, this.stamina - dmg);
     this.vx = 160 * Math.sign(this.x - fromX || 1);
     this.vy = -200;
     this.invuln = 1.2;
@@ -129,14 +131,23 @@ class Player {
     if (this.swimming) return this.facing > 0 ? Sprites.hikerJump : Sprites.hikerJumpL;
     if (!this.onGround) return this.facing > 0 ? Sprites.hikerJump : Sprites.hikerJumpL;
     if (this.trudge) return this.facing > 0 ? Sprites.hikerTrudge : Sprites.hikerTrudgeL;
-    // dancing: walk frames double as dance steps, flipping on the beat
-    const f = Math.floor(this.anim) % 2;
-    return (this.facing > 0 ? Sprites.hiker : Sprites.hikerL)[f];
+    // dancing: walk frames double as dance steps, stepping on the beat
+    const arr = this.facing > 0 ? Sprites.hiker : Sprites.hikerL;
+    return arr[Math.floor(this.anim) % arr.length];
   }
 }
 
 class Enemy {
-  constructor(x, y) { this.x = x; this.y = y; this.vx = 0; this.vy = 0; this.remove = false; this.dead = false; this.deadT = 0; }
+  constructor(x, y) {
+    this.x = x; this.y = y; this.vx = 0; this.vy = 0;
+    this.remove = false; this.dead = false; this.deadT = 0;
+    this.beatFrame = 0; this.hype = 1;
+  }
+  // every animal keeps time — animation frames advance on the beat
+  keepTime(beats, intensity) {
+    if (beats.length) this.beatFrame += beats.length;
+    this.hype = intensity;
+  }
   dieStomp() { this.dead = true; this.deadT = 0.45; this.vx = 0; }
   dieBonk() { this.dead = true; this.deadT = 0.8; this.vy = -220; this.spin = true; }
   baseDead(dt, level) {
@@ -150,10 +161,22 @@ class Enemy {
 // their timing readable, so jumps can be planned (and level-placed groups
 // become timing puzzles). The music still touches them: speeds scale with
 // section intensity and frogs hop exactly on downbeats.
+// At full hype (3) every animal stops attacking and dances on the beat —
+// rave sections are a truce.
 class Chipmunk extends Enemy {
   constructor(x, y, dir = -1) { super(x, y); this.w = 12; this.h = 8; this.dir = dir; this.anim = 0; }
   update(dt, level, player, beats, intensity) {
+    this.keepTime(beats, intensity);
     if (this.dead) return this.baseDead(dt, level);
+    if (intensity >= 3) { // dance break: bop in place
+      this.vx = 0;
+      return moveY(this, dt, level, { noPlatforms: true });
+    }
+    // turn at ledges instead of walking off (koopa-red rules)
+    if (this.onGround) {
+      const lookX = this.x + this.w / 2 + this.dir * (this.w / 2 + 3);
+      if (level.groundTop(lookX) > this.y + this.h + 20) this.dir *= -1;
+    }
     this.vx = this.dir * (50 + intensity * 12);
     const beforeVx = this.vx;
     moveX(this, this.vx * dt, level);
@@ -163,27 +186,39 @@ class Chipmunk extends Enemy {
   }
   sprite() {
     if (this.dead) return Sprites.chipSquash;
-    const f = Math.floor(this.anim) % 2;
-    return (this.vx <= 0 ? Sprites.chip : Sprites.chipL)[f];
+    const arr = this.dir <= 0 ? Sprites.chip : Sprites.chipL;
+    // scurrying animates by speed; dancing snaps to the beat
+    const f = this.hype >= 3 ? this.beatFrame : Math.floor(this.anim);
+    return arr[f % arr.length];
   }
   stompable = true;
+  bouncy = true; // stomping a chipmunk launches you extra high
 }
 
 class Frog extends Enemy {
   constructor(x, y) { super(x, y); this.w = 10; this.h = 8; this.onGround = false; }
   update(dt, level, player, beats, intensity) {
+    this.keepTime(beats, intensity);
     if (this.dead) return this.baseDead(dt, level);
     // always hops toward you — but only ever on the downbeat, so it's a
-    // pursuer you can time rather than a relentless one
+    // pursuer you can time rather than a relentless one (at full hype it
+    // hops on the spot instead: dancing)
     if (this.onGround && beats.some(b => b.type === "downbeat")) {
-      this.vy = -240; this.vx = 65 * (Math.sign(player.x - this.x) || -1);
+      this.vy = -240;
+      this.vx = intensity >= 3 ? 0 : 65 * (Math.sign(player.x - this.x) || -1);
       Sfx.play("boing", 0.7 * Sfx.vol(player.x - this.x));
     }
     if (this.onGround) this.vx *= 0.6;
     moveX(this, this.vx * dt, level);
     moveY(this, dt, level, { noPlatforms: true });
   }
-  sprite() { return this.dead || this.onGround ? Sprites.frog[0] : Sprites.frog[1]; }
+  sprite() {
+    if (this.dead) return Sprites.frogDead || Sprites.frog[0];
+    // dedicated dance frames (cells frog_c/frog_d) when raving and present
+    if (this.hype >= 3 && Sprites.frog.length > 2)
+      return Sprites.frog[2 + this.beatFrame % (Sprites.frog.length - 2)];
+    return this.onGround ? Sprites.frog[0] : Sprites.frog[1];
+  }
   stompable = true;
 }
 
@@ -193,29 +228,40 @@ class Snake extends Enemy {
     this.state = "coiled"; this.dir = -1;
   }
   update(dt, level, player, beats, intensity) {
+    this.keepTime(beats, intensity);
     if (this.dead) return this.baseDead(dt, level);
     if (this.state === "coiled") {
       this.vx = 0;
-      // ambush: strikes when you get close, then commits to the direction
+      if (intensity >= 3) { // dancing, not striking
+        return moveY(this, dt, level, { noPlatforms: true });
+      }
+      // ambush: a straight beeline at where you ARE the moment it strikes,
+      // held until it's off-screen (terrain doesn't stop it)
       if (Math.abs(player.x - this.x) < 90 && Math.abs(player.y - this.y) < 60) {
+        const dx = (player.x + player.w / 2) - (this.x + this.w / 2);
+        const dy = (player.y + player.h / 2) - (this.y + this.h / 2);
+        const len = Math.hypot(dx, dy) || 1;
+        const speed = 165 + intensity * 15;
         this.state = "dash";
-        this.dir = Math.sign(player.x - this.x) || -1;
+        this.dashVx = speed * dx / len;
+        this.dashVy = speed * dy / len;
+        this.dir = dx >= 0 ? 1 : -1;
         Sfx.play("hiss", Sfx.vol(player.x - this.x));
       }
       return moveY(this, dt, level, { noPlatforms: true });
     }
-    // dash: fast, straight, and gone — off-screen it despawns (the enemy
-    // cull handles that); a wall ends the dash into the rocks
-    this.vx = this.dir * (150 + intensity * 15);
-    const beforeVx = this.vx;
-    moveX(this, this.vx * dt, level);
-    if (this.vx === 0 && beforeVx !== 0) this.remove = true;
-    moveY(this, dt, level, { noPlatforms: true });
+    // dash: no gravity, no collisions — an arrow through the air until the
+    // off-screen cull removes it
+    this.x += this.dashVx * dt;
+    this.y += this.dashVy * dt;
     this.anim += dt * 14;
   }
   sprite() {
-    const f = this.state === "coiled" ? 0 : Math.floor(this.anim) % 2;
-    return (this.dir <= 0 ? Sprites.snake : Sprites.snakeL)[f];
+    if (this.dead) return Sprites.snakeDead || Sprites.snake[0];
+    const arr = this.dir <= 0 ? Sprites.snake : Sprites.snakeL;
+    // coiled it sways to the beat; dashing it animates fast
+    const f = this.state === "coiled" ? this.beatFrame : Math.floor(this.anim);
+    return arr[f % arr.length];
   }
   stompable = false; // spiky rule: never safe to touch — jump over it
 }
@@ -227,14 +273,16 @@ class Bird extends Enemy {
     this.anim = 0; this.diving = 0;
   }
   update(dt, level, player, beats, intensity) {
+    this.keepTime(beats, intensity);
     if (this.dead) return this.baseDead(dt, level);
     // steady sweep of a fixed beat of sky...
     if (this.x < this.homeX - this.range) this.dir = 1;
     if (this.x > this.homeX + this.range) this.dir = -1;
     this.vx = this.dir * (60 + intensity * 15);
     // ...but every now and then, on a downbeat with prey below, it dives
-    // (more often the harder the music is going)
-    if (this.diving <= 0 && beats.some(b => b.type === "downbeat") &&
+    // (more often the harder the music is going; never during a rave —
+    // it's dance-swooping then)
+    if (this.diving <= 0 && intensity < 3 && beats.some(b => b.type === "downbeat") &&
         Math.abs(this.x - player.x) < 100 && player.y > this.y &&
         Math.random() < 0.15 + 0.15 * intensity) {
       this.diving = 0.7;
@@ -250,8 +298,56 @@ class Bird extends Enemy {
     this.anim += dt * 8;
   }
   sprite() {
-    const f = Math.floor(this.anim) % 2;
-    return (this.vx <= 0 ? Sprites.bird : Sprites.birdL)[f];
+    if (this.dead) return Sprites.birdDead || Sprites.bird[0];
+    // wings beat with the music
+    const arr = this.vx <= 0 ? Sprites.bird : Sprites.birdL;
+    return arr[this.beatFrame % arr.length];
   }
   stompable = false; // special-cased: top = springboard, below = bonk
+}
+
+// Rare night visitor: enormous damage, effectively unkillable (stomps just
+// startle it), but a total scaredy-cat — rush it or land a jump nearby and
+// it bolts. Comes out only in the dark ends of the day.
+class Bear extends Enemy {
+  constructor(x, y) {
+    super(x, y); this.w = 24; this.h = 13;
+    this.state = "prowl"; this.dir = -1; this.anim = 0;
+  }
+  startle(player) {
+    if (this.state === "flee") return;
+    this.state = "flee";
+    this.dir = Math.sign(this.x - player.x) || 1; // away
+    Sfx.play("hiss", 0.6); // huff
+  }
+  update(dt, level, player, beats, intensity) {
+    this.keepTime(beats, intensity);
+    if (intensity >= 3 && this.state !== "flee") { // even the bear raves
+      this.vx = 0;
+      return moveY(this, dt, level, { noPlatforms: true });
+    }
+    if (this.state === "prowl") {
+      this.dir = Math.sign(player.x - this.x) || -1;
+      this.vx = this.dir * 22;
+      // scaredy-cat: bolt if the hiker charges at it or lands a jump nearby
+      const dist = Math.abs(player.x - this.x);
+      const charging = dist < 80 && Math.abs(player.vx) > 100 &&
+        Math.sign(player.vx) === Math.sign(this.x - player.x);
+      const thump = dist < 130 && player.onGround && player.vy === 0 && player.justLanded;
+      if (charging || thump) this.startle(player);
+    } else {
+      this.vx = this.dir * 170;
+    }
+    moveX(this, this.vx * dt, level);
+    moveY(this, dt, level, { noPlatforms: true });
+    this.anim += dt * (this.state === "flee" ? 14 : 5);
+  }
+  sprite() {
+    const arr = this.dir <= 0 ? Sprites.bear : Sprites.bearL;
+    // lumbers (and raves) in time; only fleeing breaks tempo
+    const f = this.state === "flee" ? Math.floor(this.anim) : this.beatFrame;
+    return arr[f % arr.length];
+  }
+  stompable = false; // special-cased: stomp startles it, nothing kills it
+  damage = 40;
 }
