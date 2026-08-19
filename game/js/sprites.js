@@ -357,6 +357,11 @@ function sliceSheet(mf, img, partial) {
   if (S.snake) S.snakeL = S.snake.map(flip);
   put("bird", [by.bird_a, by.bird_b]);
   if (S.bird) S.birdL = S.bird.map(flip);
+  put("bear", [by.bear_a, by.bear_b]);
+  if (S.bear) S.bearL = S.bear.map(flip);
+  put("frogDead", by.frog_dead);
+  put("snakeDead", by.snake_dead);
+  put("birdDead", by.bird_dead);
   put("snack", by.snack); put("star", by.star); put("matchbox", by.matchbox);
   put("fruit", by.fruit);
   put("sign", by.sign); put("cairn", by.cairn); put("tent", by.tent);

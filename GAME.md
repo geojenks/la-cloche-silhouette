@@ -44,7 +44,7 @@ mp3s. **Copyrighted tracks must NOT be embedded in this public repo/site** —
 show a "song of the day" link out instead, and use original chiptune-style
 loops for actual in-game audio.
 
-## Status (2026-08-15)
+## Status (2026-08-16)
 
 Bare-bones Day 1 is playable at `game/index.html` (linked from the map
 topbar). Decisions locked in with George:
@@ -93,6 +93,29 @@ decor, terrain tiles) goes to GPT for restyling;
 `game/data/sprites/base.png` (+ optional partial `hype0/2/3.png` variants
 that switch with the music), which the game auto-loads over the code-drawn
 placeholders. Raw GPT sheets live in `game/data/sprites/src/`.
+
+### Sprite-sheet state (2026-08-16)
+
+The manifest is now a 7-column, 6-row sheet. The new base cells are `fruit`,
+`bear_a/b`, `frog_dead`, `snake_dead`, and `bird_dead`; the two bear frames
+and three dead-state sprites are exposed by `sliceSheet()` as `Sprites.bear`,
+`Sprites.frogDead`, `Sprites.snakeDead`, and `Sprites.birdDead` for later game
+wiring.
+
+Canonical 4x labeled sources are `game/data/sprites/src/base-v2.png`,
+`calm.png`, `dance.png`, and `rave.png`. Their normalized runtime atlases are
+`base.png`, `hype0.png`, `hype2.png`, and `hype3.png` respectively. The mood
+atlases are deliberately sparse: calm overrides the four hikers, birds, and
+frogs; dance overrides walk-frame hikers, headphone chipmunks, and frogs;
+rave overrides all hikers, chipmunks, frogs, birds, bears, sun, and star.
+
+`tools/assemble_spritesheet_variants.py` rebuilds the exact grid around the
+generated art. It copies every established base sprite from the prior native
+atlas, isolates only approved generated cells, and forces unused variant art
+areas to exact `#FF00FF` before normalization. Validation on 2026-08-16 found
+all 32 pre-existing base sprites pixel-identical to `base-v1.png`; each mood
+atlas contained exactly its allowed cells, used only binary alpha, and had no
+opaque magenta pixels.
 
 ## Constraints carried over from the site
 

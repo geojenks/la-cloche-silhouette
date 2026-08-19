@@ -28,6 +28,13 @@ media/audio_full/*
 !media/audio_full/self__Mosquito.mp3
 !media/audio_full/self__Wood_bird.mp3
 
+# game soundtrack: only prepared top-level mp3s deploy;
+# raw rips stashed in subfolders (day/, night/) never leave this machine
+media/audio_game/*
+!media/audio_game/*.mp3
+
+__pycache__/
+
 # media removed in review (metadata stays in site_data as dropped)
 media/web/20260807_213240.jpg
 media/thumb/20260807_213240.jpg
